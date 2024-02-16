@@ -1,7 +1,8 @@
 const std = @import("std");
 const assert = std.debug.assert;
 const Allocator = std.mem.Allocator;
-const c = @import("c.zig");
+const slurm_xcalloc = @import("c.zig").slurm_xcalloc;
+const slurm_xfree = @import("c.zig").slurm_xfree;
 
 pub fn alloc(
     _: *anyopaque,
@@ -13,7 +14,7 @@ pub fn alloc(
     assert(len > 0);
     assert(log2_ptr_align <= comptime std.math.log2_int(usize, @alignOf(std.c.max_align_t)));
     const src: std.builtin.SourceLocation = @src();
-    return @as(?[*]u8, @ptrCast(c.slurm_xcalloc(1, len, true, false, src.file, src.line, src.fn_name)));
+    return @as(?[*]u8, @ptrCast(slurm_xcalloc(1, len, true, false, src.file, src.line, src.fn_name)));
 }
 
 pub fn resize(
@@ -36,5 +37,5 @@ pub fn free(
 ) void {
     _ = log2_buf_align;
     _ = return_address;
-    c.slurm_xfree(@constCast(@alignCast(@ptrCast(&buf.ptr))));
+    slurm_xfree(@constCast(@alignCast(@ptrCast(&buf.ptr))));
 }

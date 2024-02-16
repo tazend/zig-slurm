@@ -2,7 +2,7 @@ const std = @import("std");
 const Allocator = std.mem.Allocator;
 const SlurmAllocator = @import("SlurmAllocator.zig");
 const builtin = std.builtin;
-const c = @import("c.zig");
+const c = @import("c.zig").c;
 pub const Job = @import("job.zig");
 
 pub const slurm_allocator = Allocator{
