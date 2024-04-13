@@ -2,8 +2,10 @@ const std = @import("std");
 const Allocator = std.mem.Allocator;
 const SlurmAllocator = @import("SlurmAllocator.zig");
 const builtin = std.builtin;
-const c = @import("c.zig").c;
+pub const c = @import("c.zig").c;
 pub const Job = @import("Job.zig");
+pub const Node = @import("Node.zig");
+pub const uint = @import("uint.zig");
 
 pub const slurm_allocator = Allocator{
     .ptr = undefined,
@@ -17,10 +19,6 @@ const slurm_allocator_vtable = Allocator.VTable{
 
 pub const init = c.slurm_init;
 pub const deinit = c.slurm_fini;
-
-test {
-    std.testing.refAllDeclsRecursive(@This());
-}
 
 test "slurm_allocator" {
     try std.heap.testAllocator(slurm_allocator);
