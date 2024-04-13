@@ -4,11 +4,11 @@ const err = @import("error.zig");
 const Error = @import("error.zig").Error;
 
 const Job = @This();
-const JobId = u32;
-const ResponseMessage = c.job_info_msg_t;
-const JobInfo = c.slurm_job_info_t;
+pub const JobId = u32;
+pub const ResponseMessage = c.job_info_msg_t;
+pub const RawJob = c.slurm_job_info_t;
 
-ptr: *JobInfo = undefined,
+c_ptr: *RawJob = undefined,
 id: JobId,
 
 pub const SignalFlags = struct {
@@ -25,10 +25,15 @@ pub const SignalFlags = struct {
     pub const no_sig_fail = c.KILL_NO_SIG_FAIL;
 };
 
+pub const HoldMode = enum {
+    user,
+    admin,
+};
+
 pub const InfoResponse = struct {
     msg: *ResponseMessage = undefined,
     count: u32 = 0,
-    items: [*c]JobInfo,
+    items: [*c]RawJob,
 
     const Self = @This();
 
@@ -38,15 +43,18 @@ pub const InfoResponse = struct {
     }
 
     pub const Iterator = struct {
-        jobs: *InfoResponse,
+        resp: *InfoResponse,
         count: usize,
 
         pub fn next(it: *Iterator) ?Job {
-            if (it.count >= it.jobs.count) return null;
+            if (it.count >= it.resp.count) return null;
             const id = it.count;
             it.count += 1;
-            const ptr: *JobInfo = @ptrCast(&it.jobs.items[id]);
-            return Job{ .ptr = ptr, .id = ptr.job_id };
+            const c_ptr: *RawJob = @ptrCast(&it.resp.items[id]);
+            return Job{
+                .c_ptr = c_ptr,
+                .id = c_ptr.job_id,
+            };
         }
 
         pub fn reset(it: *Iterator) void {
@@ -56,19 +64,22 @@ pub const InfoResponse = struct {
 
     pub fn iter(self: *Self) Iterator {
         return Iterator{
-            .jobs = self,
+            .resp = self,
             .count = 0,
         };
     }
 
-    pub fn slice_raw(self: *Self) []JobInfo {
+    pub fn slice_raw(self: *Self) []RawJob {
+        if (self.count == 0) return &.{};
         return self.items[0..self.count];
     }
 };
 
-pub fn load() InfoResponse {
+pub fn load_all() Error!InfoResponse {
     var data: *ResponseMessage = undefined;
-    _ = c.slurm_load_jobs(0, @ptrCast(&data), c.SHOW_DETAIL | c.SHOW_ALL);
+    try err.checkRpc(
+        c.slurm_load_jobs(0, @ptrCast(&data), c.SHOW_DETAIL | c.SHOW_ALL),
+    );
     return InfoResponse{
         .msg = data,
         .count = data.record_count,
@@ -76,9 +87,11 @@ pub fn load() InfoResponse {
     };
 }
 
-pub fn load_one(id: JobId) InfoResponse {
+pub fn load_one(id: JobId) Error!InfoResponse {
     var data: *ResponseMessage = undefined;
-    _ = c.slurm_load_job(@ptrCast(&data), id, c.SHOW_DETAIL);
+    try err.checkRpc(
+        c.slurm_load_job(@ptrCast(&data), id, c.SHOW_DETAIL),
+    );
     return InfoResponse{
         .msg = data,
         .count = data.record_count,
@@ -100,4 +113,21 @@ pub fn suspendx(self: Job) Error!void {
 
 pub fn unsuspend(self: Job) Error!void {
     try err.checkRpc(c.slurm_resume(self.id));
+}
+
+pub fn hold(self: Job, mode: HoldMode) void {
+    _ = mode;
+    _ = self;
+}
+
+pub fn release(self: Job) void {
+    _ = self;
+}
+
+pub fn requeue(self: Job) Error!void {
+    try err.checkRpc(c.slurm_requeue(self.id, 0));
+}
+
+pub fn requeue_hold(self: Job) Error!void {
+    try err.checkRpc(c.slurm_requeue(self.id, c.JOB_REQUEUE_HOLD));
 }
