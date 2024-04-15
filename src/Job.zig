@@ -2,6 +2,7 @@ const c = @import("c.zig").c;
 const std = @import("std");
 const err = @import("error.zig");
 const Error = @import("error.zig").Error;
+const time_t = std.os.linux.time_t;
 
 const Job = @This();
 pub const JobId = u32;
@@ -29,6 +30,74 @@ pub const HoldMode = enum {
     user,
     admin,
 };
+
+pub fn getStdOut(self: Job) [1024:0]u8 {
+    var buf: [1024:0]u8 = undefined;
+    c.slurm_get_job_stdout(&buf, buf.len, self.c_ptr);
+    return buf;
+}
+
+pub fn getStdErr(self: Job) [1024:0]u8 {
+    var buf: [1024:0]u8 = undefined;
+    c.slurm_get_job_stderr(&buf, buf.len, self.c_ptr);
+    return buf;
+}
+
+pub fn getStdIn(self: Job) [1024:0]u8 {
+    var buf: [1024:0]u8 = undefined;
+    c.slurm_get_job_stdin(&buf, buf.len, self.c_ptr);
+    return buf;
+}
+
+pub fn getRunTime(self: Job) time_t {
+    const job: *RawJob = self.c_ptr;
+    const state = job.job_state & c.JOB_STATE_BASE;
+    var rtime: time_t = undefined;
+    var etime: time_t = undefined;
+
+    if (state == c.JOB_PENDING or job.start_time == 0) {
+        return 0;
+    } else if (state == c.JOB_SUSPENDED) {
+        return job.pre_sus_time;
+    } else {
+        const is_running = state == c.JOB_RUNNING;
+        if (is_running or job.end_time == 0) {
+            etime = std.time.timestamp();
+        } else etime = job.end_time;
+
+        if (job.suspend_time > 0) {
+            rtime = @intFromFloat(c.difftime(etime, job.suspend_time));
+            rtime += job.pre_sus_time;
+        } else {
+            rtime = @intFromFloat(c.difftime(etime, job.start_time));
+        }
+    }
+    return rtime;
+}
+
+pub fn getMemoryPerCpu(self: Job) ?u64 {
+    const mem = self.c_ptr.pn_min_memory;
+    if (mem != c.NO_VAL64 and (mem & c.MEM_PER_CPU) != 0) {
+        return mem & (~c.MEM_PER_CPU);
+    } else return null;
+}
+
+pub fn getMemoryPerNode(self: Job) ?u64 {
+    const mem = self.c_ptr.pn_min_memory;
+    if (mem != c.NO_VAL64 and (mem & c.MEM_PER_CPU) == 0) {
+        return mem;
+    } else return null;
+}
+
+pub fn getMemory(self: Job) u64 {
+    if (self.getMemoryPerNode()) |mem| {
+        return mem * self.c_ptr.num_nodes;
+    } else if (self.getMemoryPerCpu()) |mem| {
+        return mem * self.c_ptr.num_cpus;
+    } // TODO: GPU
+
+    return 0;
+}
 
 pub const InfoResponse = struct {
     msg: *ResponseMessage = undefined,
