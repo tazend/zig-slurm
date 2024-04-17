@@ -12,18 +12,64 @@ pub const RawJob = c.slurm_job_info_t;
 c_ptr: *RawJob = undefined,
 id: JobId,
 
-pub const SignalFlags = struct {
-    pub const batch = c.KILL_JOB_BATCH;
-    pub const array_task = c.KILL_ARRAY_TASK;
-    pub const steps_only = c.KILL_STEPS_ONLY;
-    pub const full = c.KILL_FULL_JOB;
-    pub const fed_requeue = c.KILL_FED_REQUEUE;
-    pub const hurry = c.KILL_HURRY;
-    pub const oom = c.KILL_OOM;
-    pub const no_sibs = c.KILL_NO_SIBS;
-    pub const resv = c.KILL_JOB_RESV;
-    pub const no_cron = c.KILL_NO_CRON;
-    pub const no_sig_fail = c.KILL_NO_SIG_FAIL;
+pub const SignalFlags = packed struct(u16) {
+    batch: bool = false,
+    array_task: bool = false,
+    steps_only: bool = false,
+    full: bool = false,
+    fed_requeue: bool = false,
+    hurry: bool = false,
+    oom: bool = false,
+    no_sibs: bool = false,
+    resv: bool = false,
+    no_cron: bool = false,
+    no_sig_fail: bool = false,
+    jobs_verbose: bool = false,
+
+    _padding: u6 = 0,
+};
+
+pub const MailFlags = packed struct(u16) {
+    begin: bool = false,
+    end: bool = false,
+    fail: bool = false,
+    requeue: bool = false,
+    time100: bool = false,
+    time90: bool = false,
+    time50: bool = false,
+    stage_out: bool = false,
+    array_tasks: bool = false,
+    invalid_depend: bool = false,
+
+    _padding: u6 = 0,
+
+    pub const all: MailFlags = @bitCast(@as(u16, (1 << @typeInfo(MailFlags).Struct.fields.len - 1) - 1));
+
+    pub fn toStr(self: MailFlags, allocator: std.mem.Allocator) ![]const u8 {
+        const sep = ",";
+
+        comptime var max_size = sep.len * (@typeInfo(MailFlags).Struct.fields.len - 2);
+        inline for (std.meta.fields(@TypeOf(self))) |f| {
+            if (f.type == bool) max_size += f.name.len;
+        }
+
+        var result: [max_size]u8 = undefined;
+        var bytes: usize = 0;
+        inline for (std.meta.fields(@TypeOf(self))) |f| {
+            if (f.type == bool and @as(f.type, @field(self, f.name))) {
+                if (bytes == 0) {
+                    @memcpy(result[0..f.name.len], f.name);
+                    bytes += f.name.len;
+                } else {
+                    @memcpy(result[bytes..][0..sep.len], sep);
+                    bytes += sep.len;
+                    @memcpy(result[bytes..][0..f.name.len], f.name);
+                    bytes += f.name.len;
+                }
+            }
+        }
+        return try allocator.dupe(u8, result[0..bytes]);
+    }
 };
 
 pub const HoldMode = enum {
