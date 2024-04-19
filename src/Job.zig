@@ -150,6 +150,12 @@ pub fn getStdIn(self: Job) [1024:0]u8 {
     return buf;
 }
 
+pub inline fn nice(self: Job) ?i64 {
+    if (self.c_ptr.nice != c.NO_VAL) {
+        return @as(i64, self.c_ptr.nice) - c.NICE_OFFSET;
+    } else return null;
+}
+
 pub inline fn stateStr(self: Job) [:0]const u8 {
     const state_flags = self.c_ptr.job_state & c.JOB_STATE_FLAGS;
     const state_base = self.c_ptr.job_state & c.JOB_STATE_BASE;
