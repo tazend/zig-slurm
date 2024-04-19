@@ -29,6 +29,61 @@ pub const SignalFlags = packed struct(u16) {
     _padding: u6 = 0,
 };
 
+pub const State = enum {
+    pending,
+    running,
+    suspended,
+    complete,
+    cancelled,
+    failed,
+    timeout,
+    node_fail,
+    preempted,
+    boot_fail,
+    deadline,
+    oom,
+    _end,
+};
+
+pub const StateFlags = packed struct(u32) {
+    _padding1: bool = false,
+    _padding2: bool = false,
+    _padding4: bool = false,
+    _padding8: bool = false,
+    _padding16: bool = false,
+    _padding32: bool = false,
+    _padding64: bool = false,
+    _padding128: bool = false,
+
+    launch_failed: bool = false,
+    update_job: bool = false,
+    requeue: bool = false,
+    requeue_hold: bool = false,
+    special_exit: bool = false,
+    resizing: bool = false,
+    configuring: bool = false,
+    completing: bool = false,
+    stopped: bool = false,
+    reconfig_fail: bool = false,
+    power_up_node: bool = false,
+    revoked: bool = false,
+    requeue_fed: bool = false,
+    resv_del_hold: bool = false,
+    signaling: bool = false,
+    stage_out: bool = false,
+
+    _padding_end: u8 = 0,
+
+    pub fn toStr(self: StateFlags) ?[:0]const u8 {
+        inline for (std.meta.fields(@TypeOf(self))) |f| {
+            if (f.type == bool and @as(f.type, @field(self, f.name))) {
+                return f.name;
+            }
+        }
+        return null;
+    }
+};
+
 pub const MailFlags = packed struct(u16) {
     begin: bool = false,
     end: bool = false,
@@ -93,6 +148,20 @@ pub fn getStdIn(self: Job) [1024:0]u8 {
     var buf: [1024:0]u8 = undefined;
     c.slurm_get_job_stdin(&buf, buf.len, self.c_ptr);
     return buf;
+}
+
+pub inline fn stateStr(self: Job) [:0]const u8 {
+    const state_flags = self.c_ptr.job_state & c.JOB_STATE_FLAGS;
+    const state_base = self.c_ptr.job_state & c.JOB_STATE_BASE;
+
+    if (state_flags != 0) {
+        const flags: StateFlags = @bitCast(state_flags);
+        return flags.toStr().?;
+    } else if (state_base < c.JOB_END) {
+        return @tagName(@as(State, @enumFromInt(state_base)));
+    } else {
+        return "unknown";
+    }
 }
 
 pub fn getRunTime(self: Job) time_t {
