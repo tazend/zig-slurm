@@ -23,3 +23,7 @@ pub const deinit = c.slurm_fini;
 test "slurm_allocator" {
     try std.heap.testAllocator(slurm_allocator);
 }
+
+test {
+    std.testing.refAllDeclsRecursive(Job);
+}
