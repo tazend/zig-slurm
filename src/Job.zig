@@ -1,7 +1,7 @@
 const c = @import("c.zig").c;
 const std = @import("std");
 const err = @import("error.zig");
-const Error = @import("error.zig").Error;
+const SlurmError = @import("error.zig").Error;
 const time_t = std.os.linux.time_t;
 const JobIdList = std.ArrayList(JobId);
 
@@ -596,6 +596,149 @@ pub fn memory(self: Job) u64 {
     return 0;
 }
 
+pub const GresEntry = struct {
+    name: []const u8 = undefined,
+    type: ?[]const u8 = null,
+    count: u32 = 1,
+    indexes: ?[]const u8 = null,
+};
+
+pub const GresParseError = error{
+    InvalidIDXFormat,
+    MalformedString,
+};
+
+pub fn parseGresStr(gres: []const u8) !GresEntry {
+    var entry = GresEntry{};
+    // gres:gpu:nvidia-a100:2(IDX:0,1)
+    if (std.mem.eql(u8, gres, "(null)")) {
+        return entry;
+    }
+
+    var gres_items = std.mem.splitScalar(u8, gres, ':');
+
+    while (gres_items.next()) |item| {
+        if (std.mem.containsAtLeast(u8, item, 1, "gres")) {
+            const maybe_name = gres_items.next() orelse return GresParseError.MalformedString;
+            entry.name = maybe_name;
+        } else entry.name = item;
+
+        //        const item_no_delim = std.mem.trimLeft(u8, item, gres_delim);
+        // Check if this item contains (IDX:i,ii,iii)
+        //       const has_idx = item_no_delim[item_no_delim.len - 1] == ')';
+        //
+        // Remaining: nvidia-a100:2(IDX or nvidia-a100:(IDX or nvidia-a100 or 2(IDX
+        if (gres_items.next()) |type_or_count| {
+            // type_or_count can be:
+            // - type
+            // - count
+            // - count(IDX
+
+            // count_or_idx can be
+            // - count
+            // - count(IDX
+            // - count,gres or count,
+            // - (IDX
+            // - idxrange),gres (contains start of next item)
+            var has_count = false;
+            const count_or_idx = gres_items.next();
+            //        const item_no_delim = std.mem.trimLeft(u8, item, gres_delim);
+            if (count_or_idx) |ci| {
+                if (std.mem.containsAtLeast(u8, ci, 1, "gres") or std.mem.containsAtLeast(u8, ci, 1, ")")) {
+                    // no type
+                }
+
+                if (std.mem.containsAtLeast(u8, ci, 1, "(")) {
+                    // count(IDX or (IDX
+
+                    const idx_or_next_entry = gres_items.next() orelse return GresParseError.InvalidIDXFormat;
+                    if (std.mem.startsWith(u8, ci, "(")) {
+                        // (IDX
+
+                        // idxrange),gres or idxrange)
+                        entry.indexes = std.mem.sliceTo(idx_or_next_entry, ')');
+                    } else {
+                        // count(IDX
+                        entry.count = try std.fmt.parseInt(u32, std.mem.sliceTo(ci, '('), 10);
+                        entry.indexes = std.mem.sliceTo(idx_or_next_entry, ')');
+                        has_count = true;
+                    }
+                    entry.type = type_or_count;
+                    continue;
+                } else if (std.mem.containsAtLeast(u8, ci, 1, ",")) {
+                    // count,gres or count, or ,gres
+                    if (std.mem.startsWith(u8, ci, ",")) {
+                        continue;
+                    } else {
+                        entry.count = try std.fmt.parseInt(u32, std.mem.sliceTo(ci, ','), 10);
+                        has_count = true;
+                    }
+                } else {
+                    // type,count
+                    entry.type = type_or_count;
+                    entry.count = try std.fmt.parseInt(u32, ci, 10);
+                    has_count = true;
+                }
+            } else {
+                entry.count = try std.fmt.parseInt(u32, type_or_count, 10);
+            }
+
+            // type or count
+            if (has_count) {
+                entry.count = try std.fmt.parseInt(u32, type_or_count, 10);
+            } else entry.type = type_or_count;
+        }
+
+        //      const delim: u8 = if (has_idx) '(' else ':';
+        //      var splitted = std.mem.splitScalar(u8, item_no_delim, delim);
+
+        //      var main = if (has_idx) std.mem.splitScalar(u8, splitted.first(), ':') else splitted;
+        //      const idx_str: ?[]const u8 = if (has_idx) splitted.rest() else null;
+
+        //      //    var entry = GresEntry{ .name = main.first() };
+        //      entry.name = main.first();
+        //      entry.type = main.next();
+        //      if (main.next()) |i| {
+        //          entry.count = try std.fmt.parseInt(u32, i, 10);
+        //      } else {
+        //          entry.count = try std.fmt.parseInt(u32, entry.type.?, 10);
+        //          entry.type = null;
+        //      }
+
+        //      if (idx_str) |val| {
+        //          // IDX:i,ii-iv,v)
+        //          const indexes = std.mem.trimRight(u8, val, ")");
+        //          entry.indexes = indexes[3..];
+        //      }
+    }
+
+    return entry;
+}
+
+pub const KeyValuePair = struct {
+    raw: []const u8,
+    delim1: u8,
+    delim2: u8,
+
+    const Self = @This();
+
+    pub fn iter(self: Self) std.mem.SplitIterator(u8, .scalar) {
+        return std.mem.splitScalar(u8, self.raw, self.delim1);
+    }
+
+    pub fn toHashMap(self: Self, allocator: std.mem.Allocator) !std.StringHashMap([]const u8) {
+        var hashmap = std.StringHashMap([]const u8).init(allocator);
+        var it = self.iter();
+        while (it.next()) |item| {
+            var it2 = std.mem.splitScalar(u8, item, self.delim2);
+            const k = it2.first();
+            const v = it2.rest();
+            try hashmap.put(k, v);
+        }
+        return hashmap;
+    }
+};
+
 pub const InfoResponse = struct {
     msg: *ResponseMessage = undefined,
     count: u32 = 0,
@@ -641,7 +784,7 @@ pub const InfoResponse = struct {
     }
 };
 
-pub fn loadAll() Error!InfoResponse {
+pub fn loadAll() SlurmError!InfoResponse {
     var data: *ResponseMessage = undefined;
     try err.checkRpc(
         c.slurm_load_jobs(0, @ptrCast(&data), c.SHOW_DETAIL | c.SHOW_ALL),
@@ -653,7 +796,7 @@ pub fn loadAll() Error!InfoResponse {
     };
 }
 
-pub fn loadOne(id: JobId) Error!InfoResponse {
+pub fn loadOne(id: JobId) SlurmError!InfoResponse {
     var data: *ResponseMessage = undefined;
     try err.checkRpc(
         c.slurm_load_job(@ptrCast(&data), id, c.SHOW_DETAIL),
@@ -665,19 +808,19 @@ pub fn loadOne(id: JobId) Error!InfoResponse {
     };
 }
 
-pub fn sendSignal(self: Job, signal: u16, flags: u16) Error!void {
+pub fn sendSignal(self: Job, signal: u16, flags: u16) SlurmError!void {
     try err.checkRpc(c.slurm_kill_job(self.id, signal, flags));
 }
 
-pub fn cancel(self: Job) Error!void {
+pub fn cancel(self: Job) SlurmError!void {
     try self.sendSignal(9, 0);
 }
 
-pub fn suspendx(self: Job) Error!void {
+pub fn suspendx(self: Job) SlurmError!void {
     try err.checkRpc(c.slurm_suspend(self.id));
 }
 
-pub fn unsuspend(self: Job) Error!void {
+pub fn unsuspend(self: Job) SlurmError!void {
     try err.checkRpc(c.slurm_resume(self.id));
 }
 
@@ -690,11 +833,11 @@ pub fn release(self: Job) void {
     _ = self;
 }
 
-pub fn requeue(self: Job) Error!void {
+pub fn requeue(self: Job) SlurmError!void {
     try err.checkRpc(c.slurm_requeue(self.id, 0));
 }
 
-pub fn requeueHold(self: Job) Error!void {
+pub fn requeueHold(self: Job) SlurmError!void {
     try err.checkRpc(c.slurm_requeue(self.id, c.JOB_REQUEUE_HOLD));
 }
 
@@ -731,4 +874,24 @@ test "bitflag_to_str" {
     const mf_str = try mf.toStr(std.testing.allocator);
     defer std.testing.allocator.free(mf_str);
     try std.testing.expectEqualSlices(u8, "begin,end,invalid_depend", mf_str);
+}
+
+test "parseGresStr" {
+    const s = "gpu:nvidia-a100:2(IDX:0,1)";
+    const entry = try parseGresStr(s);
+    try std.testing.expect(entry.type != null);
+    try std.testing.expectEqualSlices(u8, "nvidia-a100", entry.type.?);
+    try std.testing.expectEqualSlices(u8, "gpu", entry.name);
+    try std.testing.expect(entry.indexes != null);
+    try std.testing.expectEqualSlices(u8, "0,1", entry.indexes.?);
+    try std.testing.expect(entry.count == 2);
+
+    const s2 = "gres:gpu:2(IDX:0,1)";
+    const entry2 = try parseGresStr(s2);
+    try std.testing.expect(entry2.type != null);
+    try std.testing.expectEqualSlices(u8, "nvidia-a100", entry2.type.?);
+    try std.testing.expectEqualSlices(u8, "gpu", entry2.name);
+    try std.testing.expect(entry2.indexes != null);
+    try std.testing.expectEqualSlices(u8, "0,1", entry2.indexes.?);
+    try std.testing.expect(entry2.count == 2);
 }
