@@ -122,7 +122,7 @@ pub const Job = extern struct {
     start_time: time_t = 0,
     start_protocol_ver: u16 = 0,
     state_desc: ?[*:0]u8 = null,
-    state_reason: StateReason = StateReason.wait_no_reason,
+    state_reason: State.Reason = State.Reason.wait_no_reason,
     std_err: ?[*:0]u8 = null,
     std_in: ?[*:0]u8 = null,
     std_out: ?[*:0]u8 = null,
@@ -207,40 +207,26 @@ pub const Job = extern struct {
             null;
     }
 
-    pub inline fn state(self: Job) State {
-        return @enumFromInt(self.job_state & c.JOB_STATE_BASE);
-    }
-
-    pub inline fn stateFlags(self: Job) StateFlags {
-        return @bitCast(self.job_state & c.JOB_STATE_FLAGS);
-    }
-
-    pub fn stateStr(self: Job) []const u8 {
-        const state_flags = self.job_state & c.JOB_STATE_FLAGS;
-        const state_base = self.job_state & c.JOB_STATE_BASE;
-
-        if (state_flags != 0) {
-            const flags: StateFlags = @bitCast(state_flags);
-            return flags.toStr().?;
-        } else if (state_base < c.JOB_END) {
-            return @tagName(@as(State, @enumFromInt(state_base)));
-        } else {
-            return "unknown";
-        }
+    pub fn state(self: Job) State {
+        return .{
+            .base = @enumFromInt(self.job_state & c.JOB_STATE_BASE),
+            .flags = @bitCast(self.job_state & c.JOB_STATE_FLAGS),
+            .reason = self.state_reason,
+        };
     }
 
     pub fn runTime(self: Job) time_t {
         const job: Job = self;
-        const base_state = self.state();
+        const status = self.state();
         var rtime: time_t = 0;
         var etime: time_t = undefined;
 
-        if (base_state == State.pending or job.start_time == 0) {
+        if (status.base == State.Base.pending or job.start_time == 0) {
             return 0;
-        } else if (base_state == State.suspended) {
+        } else if (status.base == State.Base.suspended) {
             return job.pre_sus_time;
         } else {
-            const is_running = base_state == State.running;
+            const is_running = status.base == State.Base.running;
             if (is_running or job.end_time == 0) {
                 etime = std.time.timestamp();
             } else etime = job.end_time;
@@ -371,59 +357,291 @@ pub const ProfileTypes = packed struct(u32) {
     }
 };
 
-pub const State = enum {
-    pending,
-    running,
-    suspended,
-    complete,
-    cancelled,
-    failed,
-    timeout,
-    node_fail,
-    preempted,
-    boot_fail,
-    deadline,
-    oom,
-    _end,
-};
+pub const State = struct {
+    base: State.Base,
+    flags: State.Flags,
+    reason: State.Reason,
 
-pub const StateFlags = packed struct(u32) {
-    _padding1: u8 = 0,
+    pub const Base = enum {
+        pending,
+        running,
+        suspended,
+        complete,
+        cancelled,
+        failed,
+        timeout,
+        node_fail,
+        preempted,
+        boot_fail,
+        deadline,
+        oom,
+        _end,
+    };
 
-    launch_failed: bool = false,
-    update_job: bool = false,
-    requeue: bool = false,
-    requeue_hold: bool = false,
-    special_exit: bool = false,
-    resizing: bool = false,
-    configuring: bool = false,
-    completing: bool = false,
-    stopped: bool = false,
-    reconfig_fail: bool = false,
-    power_up_node: bool = false,
-    revoked: bool = false,
-    requeue_fed: bool = false,
-    resv_del_hold: bool = false,
-    signaling: bool = false,
-    stage_out: bool = false,
+    pub const Flags = packed struct(u32) {
+        _padding1: u8 = 0,
 
-    _padding2: u8 = 0,
+        launch_failed: bool = false,
+        update_job: bool = false,
+        requeue: bool = false,
+        requeue_hold: bool = false,
+        special_exit: bool = false,
+        resizing: bool = false,
+        configuring: bool = false,
+        completing: bool = false,
+        stopped: bool = false,
+        reconfig_fail: bool = false,
+        power_up_node: bool = false,
+        revoked: bool = false,
+        requeue_fed: bool = false,
+        resv_del_hold: bool = false,
+        signaling: bool = false,
+        stage_out: bool = false,
 
-    pub fn toStr(self: StateFlags) ?[:0]const u8 {
-        inline for (std.meta.fields(@TypeOf(self))) |f| {
-            if (f.type == bool and @as(f.type, @field(self, f.name))) {
-                return f.name;
+        _padding2: u8 = 0,
+
+        pub fn toStr(self: State.Flags) ?[]const u8 {
+            inline for (std.meta.fields(@TypeOf(self))) |f| {
+                if (f.type == bool and @as(f.type, @field(self, f.name))) {
+                    return f.name;
+                }
             }
+            return null;
         }
-        return null;
+
+        pub fn equal(a: State.Flags, b: State.Flags) bool {
+            return @as(u32, @bitCast(a)) == @as(u32, @bitCast(b));
+        }
+
+        comptime {
+            std.debug.assert(
+                @sizeOf(@This()) == @sizeOf(u32) and
+                    @bitSizeOf(@This()) == @bitSizeOf(u32),
+            );
+        }
+    };
+
+    pub fn toStr(self: State) []const u8 {
+        return if (!State.Flags.equal(self.flags, State.Flags{}))
+            self.flags.toStr().?
+        else if (@intFromEnum(self.base) < c.JOB_END)
+            @tagName(self.base)
+        else
+            "unknown";
     }
 
-    comptime {
-        std.debug.assert(
-            @sizeOf(@This()) == @sizeOf(u32) and
-                @bitSizeOf(@This()) == @bitSizeOf(u32),
-        );
-    }
+    pub const Reason = enum(u32) {
+        wait_no_reason,
+        wait_priority,
+        wait_dependency,
+        wait_resources,
+        wait_part_node_limit,
+        wait_part_time_limit,
+        wait_part_down,
+        wait_part_inactive,
+        wait_held,
+        wait_time,
+        wait_licenses,
+        wait_assoc_job_limit,
+        wait_assoc_resource_limit,
+        wait_assoc_time_limit,
+        wait_reservation,
+        wait_node_not_avail,
+        wait_held_user,
+        wait_front_end,
+        fail_defer,
+        fail_down_partition,
+        fail_down_node,
+        fail_bad_constraints,
+        fail_system,
+        fail_launch,
+        fail_exit_code,
+        fail_timeout,
+        fail_inactive_limit,
+        fail_account,
+        fail_qos,
+        wait_qos_thres,
+        wait_qos_job_limit,
+        wait_qos_resource_limit,
+        wait_qos_time_limit,
+        fail_signal,
+        _defunct_wait_34,
+        wait_cleaning,
+        wait_prolog,
+        wait_qos,
+        wait_account,
+        wait_dep_invalid,
+        wait_qos_grp_cpu,
+        wait_qos_grp_cpu_min,
+        wait_qos_grp_cpu_run_min,
+        wait_qos_grp_job,
+        wait_qos_grp_mem,
+        wait_qos_grp_node,
+        wait_qos_grp_sub_job,
+        wait_qos_grp_wall,
+        wait_qos_max_cpu_per_job,
+        wait_qos_max_cpu_mins_per_job,
+        wait_qos_max_node_per_job,
+        wait_qos_max_wall_per_job,
+        wait_qos_max_cpu_per_user,
+        wait_qos_max_job_per_user,
+        wait_qos_max_node_per_user,
+        wait_qos_max_sub_job,
+        wait_qos_min_cpu,
+        wait_assoc_grp_cpu,
+        wait_assoc_grp_cpu_min,
+        wait_assoc_grp_cpu_run_min,
+        wait_assoc_grp_job,
+        wait_assoc_grp_mem,
+        wait_assoc_grp_node,
+        wait_assoc_grp_sub_job,
+        wait_assoc_grp_wall,
+        wait_assoc_max_jobs,
+        wait_assoc_max_cpu_per_job,
+        wait_assoc_max_cpu_mins_per_job,
+        wait_assoc_max_node_per_job,
+        wait_assoc_max_wall_per_job,
+        wait_assoc_max_sub_job,
+        wait_max_requeue,
+        wait_array_task_limit,
+        wait_burst_buffer_resource,
+        wait_burst_buffer_staging,
+        fail_burst_buffer_op,
+        wait_power_not_avail,
+        wait_power_reserved,
+        wait_assoc_grp_unk,
+        wait_assoc_grp_unk_min,
+        wait_assoc_grp_unk_run_min,
+        wait_assoc_max_unk_per_job,
+        wait_assoc_max_unk_per_node,
+        wait_assoc_max_unk_mins_per_job,
+        wait_assoc_max_cpu_per_node,
+        wait_assoc_grp_mem_min,
+        wait_assoc_grp_mem_run_min,
+        wait_assoc_max_mem_per_job,
+        wait_assoc_max_mem_per_node,
+        wait_assoc_max_mem_mins_per_job,
+        wait_assoc_grp_node_min,
+        wait_assoc_grp_node_run_min,
+        wait_assoc_max_node_mins_per_job,
+        wait_assoc_grp_energy,
+        wait_assoc_grp_energy_min,
+        wait_assoc_grp_energy_run_min,
+        wait_assoc_max_energy_per_job,
+        wait_assoc_max_energy_per_node,
+        wait_assoc_max_energy_mins_per_job,
+        wait_assoc_grp_gres,
+        wait_assoc_grp_gres_min,
+        wait_assoc_grp_gres_run_min,
+        wait_assoc_max_gres_per_job,
+        wait_assoc_max_gres_per_node,
+        wait_assoc_max_gres_mins_per_job,
+        wait_assoc_grp_lic,
+        wait_assoc_grp_lic_min,
+        wait_assoc_grp_lic_run_min,
+        wait_assoc_max_lic_per_job,
+        wait_assoc_max_lic_mins_per_job,
+        wait_assoc_grp_bb,
+        wait_assoc_grp_bb_min,
+        wait_assoc_grp_bb_run_min,
+        wait_assoc_max_bb_per_job,
+        wait_assoc_max_bb_per_node,
+        wait_assoc_max_bb_mins_per_job,
+        wait_qos_grp_unk,
+        wait_qos_grp_unk_min,
+        wait_qos_grp_unk_run_min,
+        wait_qos_max_unk_per_job,
+        wait_qos_max_unk_per_node,
+        wait_qos_max_unk_per_user,
+        wait_qos_max_unk_mins_per_job,
+        wait_qos_min_unk,
+        wait_qos_max_cpu_per_node,
+        wait_qos_grp_mem_min,
+        wait_qos_grp_mem_run_min,
+        wait_qos_max_mem_mins_per_job,
+        wait_qos_max_mem_per_job,
+        wait_qos_max_mem_per_node,
+        wait_qos_max_mem_per_user,
+        wait_qos_min_mem,
+        wait_qos_grp_energy,
+        wait_qos_grp_energy_min,
+        wait_qos_grp_energy_run_min,
+        wait_qos_max_energy_per_job,
+        wait_qos_max_energy_per_node,
+        wait_qos_max_energy_per_user,
+        wait_qos_max_energy_mins_per_job,
+        wait_qos_min_energy,
+        wait_qos_grp_node_min,
+        wait_qos_grp_node_run_min,
+        wait_qos_max_node_mins_per_job,
+        wait_qos_min_node,
+        wait_qos_grp_gres,
+        wait_qos_grp_gres_min,
+        wait_qos_grp_gres_run_min,
+        wait_qos_max_gres_per_job,
+        wait_qos_max_gres_per_node,
+        wait_qos_max_gres_per_user,
+        wait_qos_max_gres_mins_per_job,
+        wait_qos_min_gres,
+        wait_qos_grp_lic,
+        wait_qos_grp_lic_min,
+        wait_qos_grp_lic_run_min,
+        wait_qos_max_lic_per_job,
+        wait_qos_max_lic_per_user,
+        wait_qos_max_lic_mins_per_job,
+        wait_qos_min_lic,
+        wait_qos_grp_bb,
+        wait_qos_grp_bb_min,
+        wait_qos_grp_bb_run_min,
+        wait_qos_max_bb_per_job,
+        wait_qos_max_bb_per_node,
+        wait_qos_max_bb_per_user,
+        wait_qos_max_bb_mins_per_job,
+        wait_qos_min_bb,
+        fail_deadline,
+        wait_qos_max_bb_per_acct,
+        wait_qos_max_cpu_per_acct,
+        wait_qos_max_energy_per_acct,
+        wait_qos_max_gres_per_acct,
+        wait_qos_max_node_per_acct,
+        wait_qos_max_lic_per_acct,
+        wait_qos_max_mem_per_acct,
+        wait_qos_max_unk_per_acct,
+        wait_qos_max_job_per_acct,
+        wait_qos_max_sub_job_per_acct,
+        wait_part_config,
+        wait_account_policy,
+        wait_fed_job_lock,
+        fail_oom,
+        wait_pn_mem_limit,
+        wait_assoc_grp_billing,
+        wait_assoc_grp_billing_min,
+        wait_assoc_grp_billing_run_min,
+        wait_assoc_max_billing_per_job,
+        wait_assoc_max_billing_per_node,
+        wait_assoc_max_billing_mins_per_job,
+        wait_qos_grp_billing,
+        wait_qos_grp_billing_min,
+        wait_qos_grp_billing_run_min,
+        wait_qos_max_billing_per_job,
+        wait_qos_max_billing_per_node,
+        wait_qos_max_billing_per_user,
+        wait_qos_max_billing_mins_per_job,
+        wait_qos_max_billing_per_acct,
+        wait_qos_min_billing,
+        wait_resv_deleted,
+        wait_resv_invalid,
+        fail_constraints,
+        _,
+
+        pub fn hasVal(self: @This()) bool {
+            return @intFromEnum(self) != c.NO_VAL;
+        }
+
+        pub fn toStr(self: State.Reason) []const u8 {
+            return @tagName(self);
+        }
+    };
 };
 
 fn bitflagToStr(flags: anytype, allocator: std.mem.Allocator, padding_count: comptime_int) ![]const u8 {
@@ -501,219 +719,6 @@ pub const Oversubscription = enum(u16) {
             @tagName(self)
         else
             "no";
-    }
-};
-
-pub const StateReason = enum(u32) {
-    wait_no_reason,
-    wait_priority,
-    wait_dependency,
-    wait_resources,
-    wait_part_node_limit,
-    wait_part_time_limit,
-    wait_part_down,
-    wait_part_inactive,
-    wait_held,
-    wait_time,
-    wait_licenses,
-    wait_assoc_job_limit,
-    wait_assoc_resource_limit,
-    wait_assoc_time_limit,
-    wait_reservation,
-    wait_node_not_avail,
-    wait_held_user,
-    wait_front_end,
-    fail_defer,
-    fail_down_partition,
-    fail_down_node,
-    fail_bad_constraints,
-    fail_system,
-    fail_launch,
-    fail_exit_code,
-    fail_timeout,
-    fail_inactive_limit,
-    fail_account,
-    fail_qos,
-    wait_qos_thres,
-    wait_qos_job_limit,
-    wait_qos_resource_limit,
-    wait_qos_time_limit,
-    fail_signal,
-    _defunct_wait_34,
-    wait_cleaning,
-    wait_prolog,
-    wait_qos,
-    wait_account,
-    wait_dep_invalid,
-    wait_qos_grp_cpu,
-    wait_qos_grp_cpu_min,
-    wait_qos_grp_cpu_run_min,
-    wait_qos_grp_job,
-    wait_qos_grp_mem,
-    wait_qos_grp_node,
-    wait_qos_grp_sub_job,
-    wait_qos_grp_wall,
-    wait_qos_max_cpu_per_job,
-    wait_qos_max_cpu_mins_per_job,
-    wait_qos_max_node_per_job,
-    wait_qos_max_wall_per_job,
-    wait_qos_max_cpu_per_user,
-    wait_qos_max_job_per_user,
-    wait_qos_max_node_per_user,
-    wait_qos_max_sub_job,
-    wait_qos_min_cpu,
-    wait_assoc_grp_cpu,
-    wait_assoc_grp_cpu_min,
-    wait_assoc_grp_cpu_run_min,
-    wait_assoc_grp_job,
-    wait_assoc_grp_mem,
-    wait_assoc_grp_node,
-    wait_assoc_grp_sub_job,
-    wait_assoc_grp_wall,
-    wait_assoc_max_jobs,
-    wait_assoc_max_cpu_per_job,
-    wait_assoc_max_cpu_mins_per_job,
-    wait_assoc_max_node_per_job,
-    wait_assoc_max_wall_per_job,
-    wait_assoc_max_sub_job,
-    wait_max_requeue,
-    wait_array_task_limit,
-    wait_burst_buffer_resource,
-    wait_burst_buffer_staging,
-    fail_burst_buffer_op,
-    wait_power_not_avail,
-    wait_power_reserved,
-    wait_assoc_grp_unk,
-    wait_assoc_grp_unk_min,
-    wait_assoc_grp_unk_run_min,
-    wait_assoc_max_unk_per_job,
-    wait_assoc_max_unk_per_node,
-    wait_assoc_max_unk_mins_per_job,
-    wait_assoc_max_cpu_per_node,
-    wait_assoc_grp_mem_min,
-    wait_assoc_grp_mem_run_min,
-    wait_assoc_max_mem_per_job,
-    wait_assoc_max_mem_per_node,
-    wait_assoc_max_mem_mins_per_job,
-    wait_assoc_grp_node_min,
-    wait_assoc_grp_node_run_min,
-    wait_assoc_max_node_mins_per_job,
-    wait_assoc_grp_energy,
-    wait_assoc_grp_energy_min,
-    wait_assoc_grp_energy_run_min,
-    wait_assoc_max_energy_per_job,
-    wait_assoc_max_energy_per_node,
-    wait_assoc_max_energy_mins_per_job,
-    wait_assoc_grp_gres,
-    wait_assoc_grp_gres_min,
-    wait_assoc_grp_gres_run_min,
-    wait_assoc_max_gres_per_job,
-    wait_assoc_max_gres_per_node,
-    wait_assoc_max_gres_mins_per_job,
-    wait_assoc_grp_lic,
-    wait_assoc_grp_lic_min,
-    wait_assoc_grp_lic_run_min,
-    wait_assoc_max_lic_per_job,
-    wait_assoc_max_lic_mins_per_job,
-    wait_assoc_grp_bb,
-    wait_assoc_grp_bb_min,
-    wait_assoc_grp_bb_run_min,
-    wait_assoc_max_bb_per_job,
-    wait_assoc_max_bb_per_node,
-    wait_assoc_max_bb_mins_per_job,
-    wait_qos_grp_unk,
-    wait_qos_grp_unk_min,
-    wait_qos_grp_unk_run_min,
-    wait_qos_max_unk_per_job,
-    wait_qos_max_unk_per_node,
-    wait_qos_max_unk_per_user,
-    wait_qos_max_unk_mins_per_job,
-    wait_qos_min_unk,
-    wait_qos_max_cpu_per_node,
-    wait_qos_grp_mem_min,
-    wait_qos_grp_mem_run_min,
-    wait_qos_max_mem_mins_per_job,
-    wait_qos_max_mem_per_job,
-    wait_qos_max_mem_per_node,
-    wait_qos_max_mem_per_user,
-    wait_qos_min_mem,
-    wait_qos_grp_energy,
-    wait_qos_grp_energy_min,
-    wait_qos_grp_energy_run_min,
-    wait_qos_max_energy_per_job,
-    wait_qos_max_energy_per_node,
-    wait_qos_max_energy_per_user,
-    wait_qos_max_energy_mins_per_job,
-    wait_qos_min_energy,
-    wait_qos_grp_node_min,
-    wait_qos_grp_node_run_min,
-    wait_qos_max_node_mins_per_job,
-    wait_qos_min_node,
-    wait_qos_grp_gres,
-    wait_qos_grp_gres_min,
-    wait_qos_grp_gres_run_min,
-    wait_qos_max_gres_per_job,
-    wait_qos_max_gres_per_node,
-    wait_qos_max_gres_per_user,
-    wait_qos_max_gres_mins_per_job,
-    wait_qos_min_gres,
-    wait_qos_grp_lic,
-    wait_qos_grp_lic_min,
-    wait_qos_grp_lic_run_min,
-    wait_qos_max_lic_per_job,
-    wait_qos_max_lic_per_user,
-    wait_qos_max_lic_mins_per_job,
-    wait_qos_min_lic,
-    wait_qos_grp_bb,
-    wait_qos_grp_bb_min,
-    wait_qos_grp_bb_run_min,
-    wait_qos_max_bb_per_job,
-    wait_qos_max_bb_per_node,
-    wait_qos_max_bb_per_user,
-    wait_qos_max_bb_mins_per_job,
-    wait_qos_min_bb,
-    fail_deadline,
-    wait_qos_max_bb_per_acct,
-    wait_qos_max_cpu_per_acct,
-    wait_qos_max_energy_per_acct,
-    wait_qos_max_gres_per_acct,
-    wait_qos_max_node_per_acct,
-    wait_qos_max_lic_per_acct,
-    wait_qos_max_mem_per_acct,
-    wait_qos_max_unk_per_acct,
-    wait_qos_max_job_per_acct,
-    wait_qos_max_sub_job_per_acct,
-    wait_part_config,
-    wait_account_policy,
-    wait_fed_job_lock,
-    fail_oom,
-    wait_pn_mem_limit,
-    wait_assoc_grp_billing,
-    wait_assoc_grp_billing_min,
-    wait_assoc_grp_billing_run_min,
-    wait_assoc_max_billing_per_job,
-    wait_assoc_max_billing_per_node,
-    wait_assoc_max_billing_mins_per_job,
-    wait_qos_grp_billing,
-    wait_qos_grp_billing_min,
-    wait_qos_grp_billing_run_min,
-    wait_qos_max_billing_per_job,
-    wait_qos_max_billing_per_node,
-    wait_qos_max_billing_per_user,
-    wait_qos_max_billing_mins_per_job,
-    wait_qos_max_billing_per_acct,
-    wait_qos_min_billing,
-    wait_resv_deleted,
-    wait_resv_invalid,
-    fail_constraints,
-    _,
-
-    pub fn hasVal(self: @This()) bool {
-        return @intFromEnum(self) != c.NO_VAL;
-    }
-
-    pub fn toStr(self: StateReason) []const u8 {
-        return @tagName(self);
     }
 };
 
