@@ -4,7 +4,7 @@ const SlurmAllocator = @import("SlurmAllocator.zig");
 const builtin = std.builtin;
 pub const c = @import("c.zig").c;
 pub const Job = @import("Job.zig");
-pub const Node = @import("Node.zig");
+pub const Node = @import("Node.zig").Node;
 pub const uint = @import("uint.zig");
 
 pub const slurm_allocator = SlurmAllocator.slurm_allocator;
