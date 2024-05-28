@@ -1001,13 +1001,12 @@ pub const KeyValuePair = struct {
 pub const InfoResponse = struct {
     msg: *ResponseMessage = undefined,
     count: u32 = 0,
-    items: [*c]Job,
+    items: [*]Job,
 
     const Self = @This();
 
     pub inline fn deinit(self: Self) void {
         c.slurm_free_job_info_msg(self.msg);
-        self.items.* = undefined;
     }
 
     pub const Iterator = struct {
