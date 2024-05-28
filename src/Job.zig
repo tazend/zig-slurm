@@ -1,9 +1,11 @@
 const c = @import("c.zig").c;
+const cx = @import("c.zig");
 const std = @import("std");
 const err = @import("error.zig");
 const SlurmError = @import("error.zig").Error;
 const time_t = std.os.linux.time_t;
 const JobIdList = std.ArrayList(JobId);
+const slurm_allocator = @import("SlurmAllocator.zig").slurm_allocator;
 
 pub const JobId = u32;
 pub const ResponseMessage = c.job_info_msg_t;
@@ -168,6 +170,38 @@ pub const Job = extern struct {
             // TODO: GPU
         else
             0;
+    }
+
+    pub fn getBatchScript(self: Job, allocator: std.mem.Allocator) ![]const u8 {
+        var msg: cx.job_id_msg_t = .{ .job_id = self.job_id };
+        var req: cx.slurm_msg_t = undefined;
+        var resp: cx.slurm_msg_t = undefined;
+        cx.slurm_msg_t_init(&req);
+        cx.slurm_msg_t_init(&resp);
+
+        req.msg_type = cx.slurm_msg_type_t.request_batch_script;
+        req.data = &msg;
+
+        try err.checkRpc(cx.slurm_send_recv_controller_msg(&req, &resp, c.working_cluster_rec));
+
+        if (resp.msg_type == cx.slurm_msg_type_t.response_batch_script) {
+            const data: ?[*:0]const u8 = @ptrCast(resp.data);
+            if (data) |d| {
+                const tmp: []const u8 = std.mem.span(d);
+                const script = try allocator.dupe(u8, tmp);
+                slurm_allocator.free(tmp);
+                return script;
+            } else return error.Generic;
+        } else if (resp.msg_type == cx.slurm_msg_type_t.response_slurm_rc) {
+            const data: ?*cx.return_code_msg_t = @alignCast(@ptrCast(resp.data));
+            if (data) |d| { // TODO: properly handle this error
+                _ = d.return_code;
+                cx.slurm_free_return_code_msg(d);
+            }
+            return error.Generic;
+        } else {
+            return error.Generic;
+        }
     }
 
     //  pub fn profileTypes(self: Job) ?ProfileTypes {
