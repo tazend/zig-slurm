@@ -52,3 +52,13 @@ pub fn free(
     _ = return_address;
     slurm_xfree(@constCast(@alignCast(@ptrCast(&buf.ptr))));
 }
+
+pub const slurm_allocator = Allocator{
+    .ptr = undefined,
+    .vtable = &slurm_allocator_vtable,
+};
+const slurm_allocator_vtable = Allocator.VTable{
+    .alloc = alloc,
+    .resize = resize,
+    .free = free,
+};
