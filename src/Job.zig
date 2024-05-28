@@ -182,20 +182,20 @@ pub const Job = extern struct {
     //      return @bitCast(self.profile);
     //  }
 
-    pub fn getStdOut(self: *Job) [1024:0]u8 {
-        var buf: [1024:0]u8 = undefined;
+    pub fn getStdOut(self: *Job) [1024]u8 {
+        var buf: [1024]u8 = std.mem.zeroes([1024]u8);
         c.slurm_get_job_stdout(&buf, buf.len, @ptrCast(self));
         return buf;
     }
 
-    pub fn getStdErr(self: *Job) [1024:0]u8 {
-        var buf: [1024:0]u8 = undefined;
+    pub fn getStdErr(self: *Job) [1024]u8 {
+        var buf: [1024]u8 = std.mem.zeroes([1024]u8);
         c.slurm_get_job_stderr(&buf, buf.len, @ptrCast(self));
         return buf;
     }
 
-    pub fn getStdIn(self: *Job) [1024:0]u8 {
-        var buf: [1024:0]u8 = undefined;
+    pub fn getStdIn(self: *Job) [1024]u8 {
+        var buf: [1024]u8 = std.mem.zeroes([1024]u8);
         c.slurm_get_job_stdin(&buf, buf.len, @ptrCast(self));
         return buf;
     }
