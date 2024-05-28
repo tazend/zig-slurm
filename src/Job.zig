@@ -241,6 +241,12 @@ pub const Job = extern struct {
             break :blk rtime;
         };
     }
+
+    pub fn cpuTime(self: Job) time_t {
+        return if (self.num_cpus != c.NO_VAL)
+            self.num_cpus * self.runTime()
+        else
+            0;
     }
 
     pub inline fn arrayTasksWaiting(self: Job) ?[]const u8 {
