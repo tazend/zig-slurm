@@ -221,11 +221,11 @@ pub const Job = extern struct {
         var rtime: time_t = 0;
         var etime: time_t = undefined;
 
-        if (status.base == State.Base.pending or job.start_time == 0) {
-            return 0;
-        } else if (status.base == State.Base.suspended) {
-            return job.pre_sus_time;
-        } else {
+        return if (status.base == State.Base.pending or job.start_time == 0)
+            rtime
+        else if (status.base == State.Base.suspended)
+            job.pre_sus_time
+        else blk: {
             const is_running = status.base == State.Base.running;
             if (is_running or job.end_time == 0) {
                 etime = std.time.timestamp();
@@ -237,9 +237,10 @@ pub const Job = extern struct {
             } else {
                 rtime = @intFromFloat(c.difftime(etime, job.start_time));
             }
-        }
 
-        return rtime;
+            break :blk rtime;
+        };
+    }
     }
 
     pub inline fn arrayTasksWaiting(self: Job) ?[]const u8 {
