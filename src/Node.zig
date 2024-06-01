@@ -3,6 +3,7 @@ const std = @import("std");
 const err = @import("error.zig");
 const Error = @import("error.zig").Error;
 const time_t = std.posix.time_t;
+const parseCStr = @import("common.zig").parseCStr;
 
 pub const ResponseMessage = c.node_info_msg_t;
 const ResponseMessagePartition = c.partition_info_msg_t;
@@ -70,23 +71,58 @@ pub const Node = extern struct {
         idle_memory: u64 = 0,
         alloc_memory: u64 = 0,
 
+        fn extractFromNode(self: *Utilization, node: *Node) void {
+            self.alloc_memory += node.allocMemory();
+            self.alloc_cpus += node.allocCpus();
+            self.total_cpus += node.cpus;
+            self.effective_cpus += node.cpus_efctv;
+            self.idle_cpus += self.effective_cpus - self.alloc_cpus;
+            self.real_memory += node.real_memory;
+            self.free_memory += node.free_mem;
+            self.idle_memory += self.real_memory - self.alloc_memory;
+        }
+
+        pub fn add(self: *Utilization, other: Utilization) void {
+            self.alloc_memory += other.alloc_memory;
+            self.alloc_cpus += other.alloc_cpus;
+            self.total_cpus += other.total_cpus;
+            self.effective_cpus += other.effective_cpus;
+            self.idle_cpus += other.idle_cpus;
+            self.real_memory += other.real_memory;
+            self.free_memory += other.free_memory;
+            self.idle_memory += other.idle_memory;
+        }
+
         pub fn fromNodes(node_resp: *InfoResponse) Utilization {
             var util = Utilization{};
 
             var node_iter = node_resp.iter();
             while (node_iter.next()) |node| {
-                util.alloc_memory += node.getAllocMemory();
-                util.alloc_cpus += node.getAllocCpus();
-                util.total_cpus += node.cpus;
-                util.effective_cpus += node.cpus_efctv;
-                util.idle_cpus += util.effective_cpus - util.alloc_cpus;
-                util.real_memory += node.real_memory;
-                util.free_memory += node.free_mem;
-                util.idle_memory += util.real_memory - util.alloc_memory;
+                util.extractFromNode(node);
             }
             return util;
         }
+
+        pub fn groupByNode(node_resp: *InfoResponse, allocator: std.mem.Allocator) !std.StringHashMap(Utilization) {
+            var out = std.StringHashMap(Utilization).init(allocator);
+
+            var node_iter = node_resp.iter();
+            while (node_iter.next()) |node| {
+                var util = Utilization{};
+                util.extractFromNode(node);
+                if (parseCStr(node.name)) |name| {
+                    try out.put(name, util);
+                }
+            }
+            return out;
+        }
     };
+
+    pub fn utilization(self: *Node) Utilization {
+        var util = Utilization{};
+        util.extractFromNode(self);
+        return util;
+    }
 
     pub fn allocCpus(self: Node) u16 {
         var alloc_cpus: u16 = 0;
@@ -161,7 +197,7 @@ pub const Node = extern struct {
             };
         }
 
-        pub fn slice_raw(self: *InfoResponse) []Node {
+        pub fn toSlice(self: *InfoResponse) []Node {
             if (self.count == 0) return &.{};
             return self.items[0..self.count];
         }
