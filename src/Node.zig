@@ -3,6 +3,7 @@ const std = @import("std");
 const err = @import("error.zig");
 const Error = @import("error.zig").Error;
 const time_t = std.posix.time_t;
+const common = @import("common.zig");
 const parseCStr = @import("common.zig").parseCStr;
 
 pub const ResponseMessage = c.node_info_msg_t;
@@ -121,6 +122,14 @@ pub const Node = extern struct {
         }
     };
 
+    pub fn state(self: Node) State {
+        return .{
+            .base = @enumFromInt(self.node_state & c.NODE_STATE_BASE),
+            .flags = @bitCast(self.node_state & c.NODE_STATE_FLAGS),
+            .reason = common.parseCStr(self.reason),
+        };
+    }
+
     pub fn utilization(self: *Node) Utilization {
         return Utilization.fromNode(self);
     }
@@ -225,4 +234,82 @@ pub const Node = extern struct {
             .items = @ptrCast(node_resp.node_array),
         };
     }
+
+    pub const State = struct {
+        base: State.Base,
+        flags: State.Flags,
+        reason: ?[]const u8,
+
+        pub const Base = enum(u32) {
+            unknown,
+            down,
+            idle,
+            allocated,
+            err,
+            mixed,
+            future,
+            _,
+        };
+
+        pub const Flags = packed struct(u32) {
+            _padding1: u4 = 0,
+
+            network: bool = false,
+            reservation: bool = false,
+            undrain: bool = false,
+            cloud: bool = false,
+            resuming: bool = false,
+            drain: bool = false,
+            completing: bool = false,
+            not_responding: bool = false,
+            powered_down: bool = false,
+            fail: bool = false,
+            powering_up: bool = false,
+            maint: bool = false,
+            reboot_requested: bool = false,
+            reboot_cancel: bool = false,
+            powering_down: bool = false,
+            dynamic_future: bool = false,
+            reboot_issued: bool = false,
+            planned: bool = false,
+            invalid_reg: bool = false,
+
+            power_down: bool = false,
+            power_up: bool = false,
+            power_drain: bool = false,
+            dynamic_norm: bool = false,
+
+            _padding2: u5 = 0,
+
+            pub usingnamespace common.BitflagMethods(State.Flags, u32);
+        };
+
+        pub fn toStr(self: State, allocator: std.mem.Allocator) ![]const u8 {
+            var base_str: []const u8 = "invalid";
+            if (@intFromEnum(self.base) < c.NODE_STATE_END) {
+                base_str = @tagName(self.base);
+            }
+
+            const sep = "+";
+            const flag_str: []const u8 = try self.flags.toStr(allocator, sep);
+            defer allocator.free(flag_str);
+
+            const size = blk: {
+                var i = base_str.len;
+                if (flag_str.len != 0) i += sep.len + flag_str.len;
+
+                break :blk i;
+            };
+
+            const slice = try allocator.alloc(u8, size);
+            @memcpy(slice[0..base_str.len], base_str);
+
+            if (flag_str.len != 0) {
+                @memcpy(slice[base_str.len..][0..sep.len], sep);
+                @memcpy(slice[base_str.len + sep.len ..][0..flag_str.len], flag_str);
+            }
+
+            return slice;
+        }
+    };
 };
