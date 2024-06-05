@@ -71,15 +71,18 @@ pub const Node = extern struct {
         idle_memory: u64 = 0,
         alloc_memory: u64 = 0,
 
-        fn extractFromNode(self: *Utilization, node: *Node) void {
-            self.alloc_memory += node.allocMemory();
-            self.alloc_cpus += node.allocCpus();
-            self.total_cpus += node.cpus;
-            self.effective_cpus += node.cpus_efctv;
-            self.idle_cpus += self.effective_cpus - self.alloc_cpus;
-            self.real_memory += node.real_memory;
-            self.free_memory += node.free_mem;
-            self.idle_memory += self.real_memory - self.alloc_memory;
+        fn fromNode(node: *Node) Utilization {
+            var util = Utilization{};
+            util.alloc_memory += node.allocMemory();
+            util.alloc_cpus += node.allocCpus();
+            util.total_cpus += node.cpus;
+            util.effective_cpus += node.cpus_efctv;
+            util.idle_cpus += util.effective_cpus - util.alloc_cpus;
+            util.real_memory += node.real_memory;
+            util.free_memory += node.free_mem;
+            util.idle_memory += util.real_memory - util.alloc_memory;
+
+            return util;
         }
 
         pub fn add(self: *Utilization, other: Utilization) void {
@@ -98,7 +101,8 @@ pub const Node = extern struct {
 
             var node_iter = node_resp.iter();
             while (node_iter.next()) |node| {
-                util.extractFromNode(node);
+                const node_util = Utilization.fromNode(node);
+                util.add(node_util);
             }
             return util;
         }
@@ -108,8 +112,7 @@ pub const Node = extern struct {
 
             var node_iter = node_resp.iter();
             while (node_iter.next()) |node| {
-                var util = Utilization{};
-                util.extractFromNode(node);
+                const util = Utilization.fromNode(node);
                 if (parseCStr(node.name)) |name| {
                     try out.put(name, util);
                 }
@@ -119,9 +122,7 @@ pub const Node = extern struct {
     };
 
     pub fn utilization(self: *Node) Utilization {
-        var util = Utilization{};
-        util.extractFromNode(self);
-        return util;
+        return Utilization.fromNode(self);
     }
 
     pub fn allocCpus(self: Node) u16 {
