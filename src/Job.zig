@@ -342,7 +342,7 @@ pub const Job = extern struct {
         _ = self;
     }
 
-    pub fn requeue(self: Job) SlurmError!void {
+    pub fn requeuex(self: Job) SlurmError!void {
         try err.checkRpc(c.slurm_requeue(self.job_id, 0));
     }
 

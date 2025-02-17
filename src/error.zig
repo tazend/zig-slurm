@@ -441,7 +441,7 @@ pub fn checkRpc(err: c_int) Error!void {
         c.ESLURM_BURST_BUFFER_WAIT => Error.BurstBufferWait,
         c.ESLURM_PARTITION_DOWN => Error.PartitionDown,
         c.ESLURM_DUPLICATE_GRES => Error.DuplicateGres,
-        c.ESLURM_JOB_SETTING_DB_INX => Error.JobSettingDbInx,
+        // c.ESLURM_JOB_SETTING_DB_INX => Error.JobSettingDbInx,
         c.ESLURM_RSV_ALREADY_STARTED => Error.RsvAlreadyStarted,
         c.ESLURM_SUBMISSIONS_DISABLED => Error.SubmissionsDisabled,
         c.ESLURM_NOT_HET_JOB => Error.NotHetJob,
