@@ -1,6 +1,11 @@
 const std = @import("std");
 
-pub inline fn parseCStr(s: ?[*:0]u8) ?[]const u8 {
+pub fn parseCStr(s: ?[*:0]u8) ?[]const u8 {
+    if (s == null) return null;
+    return std.mem.span(s);
+}
+
+pub fn parseCStrZ(s: ?[*:0]u8) ?[:0]const u8 {
     if (s == null) return null;
     return std.mem.span(s);
 }

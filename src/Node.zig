@@ -6,6 +6,8 @@ const time_t = std.posix.time_t;
 const common = @import("common.zig");
 const parseCStr = @import("common.zig").parseCStr;
 
+const CStr = ?[*:0]const u8;
+
 pub const ResponseMessage = c.node_info_msg_t;
 const ResponseMessagePartition = c.partition_info_msg_t;
 
@@ -47,6 +49,8 @@ pub const Node = extern struct {
     partitions: ?[*:0]u8 = null,
     port: u16 = 0,
     real_memory: u64 = 0,
+    res_cores_per_gpu: u16 = 0,
+    gpu_spec: ?[*:0]u8 = null,
     comment: ?[*:0]u8 = null,
     reason: ?[*:0]u8 = null,
     reason_time: time_t = 0,
@@ -61,6 +65,54 @@ pub const Node = extern struct {
     weight: u32 = 0,
     tres_fmt_str: ?[*:0]u8 = null,
     version: ?[*:0]u8 = null,
+
+    pub const Updatable = extern struct {
+        comment: CStr = null,
+        cpu_bind: u32 = 0,
+        cert_token: CStr = null,
+        extra: CStr = null,
+        features: CStr = null,
+        features_active: CStr = null,
+        gres: CStr = null,
+        instance_id: CStr = null,
+        instance_type: CStr = null,
+        node_addr: CStr = null,
+        node_hostname: CStr = null,
+        node_names: CStr = null,
+        state: u32 = c.NO_VAL,
+        reason: CStr = null,
+        reason_uid: u32 = 0,
+        resume_after: u32 = c.NO_VAL,
+        weight: u32 = c.NO_VAL,
+    };
+
+    pub const Features = struct {
+        available: ?[]const u8 = null,
+        active: ?[]const u8 = null,
+    };
+
+    pub const Host = struct {
+        address: ?[]const u8 = null,
+        name: ?[]const u8 = null,
+    };
+
+    pub const UpdatableNew = struct {
+        comment: ?[*:0]const u8 = null,
+        cpu_bind: u32 = 0,
+        cert_token: ?[*:0]const u8 = null,
+        extra: ?[*:0]const u8 = null,
+        features: ?Features = null,
+        gres: ?[*:0]const u8 = null,
+        instance_id: CStr = null,
+        instance_type: CStr = null,
+        host: ?Host = null,
+        node_names: CStr = null,
+        state: u32 = c.NO_VAL,
+        reason: CStr = null,
+        reason_uid: u32 = 0,
+        resume_after: u32 = c.NO_VAL,
+        weight: u32 = c.NO_VAL,
+    };
 
     pub const Utilization = struct {
         alloc_cpus: u16 = 0,
@@ -213,6 +265,32 @@ pub const Node = extern struct {
         }
     };
 
+    pub fn delete(self: Node) !void {
+        if (self.node_hostname) |name| {
+            try deleteByName(std.mem.span(name));
+        }
+    }
+
+    pub fn deleteByName(name: [:0]const u8) !void {
+        const names = Updatable{ .node_names = name };
+        try err.checkRpc(
+            c.slurm_delete_node(@constCast(@ptrCast(@alignCast(&names)))),
+        );
+    }
+
+    pub fn update(self: Node, changes: *Updatable) !void {
+        if (self.name) |name| {
+            changes.node_names = std.mem.span(name);
+            try updateC(changes.*);
+        }
+    }
+
+    pub fn updateC(changes: Updatable) !void {
+        try err.checkRpc(
+            c.slurm_update_node(@constCast(@ptrCast(@alignCast(&changes)))),
+        );
+    }
+
     pub fn loadAll() Error!InfoResponse {
         const flags = c.SHOW_DETAIL | c.SHOW_ALL;
 
@@ -249,6 +327,10 @@ pub const Node = extern struct {
             mixed,
             future,
             _,
+
+            pub fn toInt(self: Base) u32 {
+                return @intFromEnum(self);
+            }
         };
 
         pub const Flags = packed struct(u32) {
@@ -282,6 +364,10 @@ pub const Node = extern struct {
             _padding2: u5 = 0,
 
             pub usingnamespace common.BitflagMethods(State.Flags, u32);
+
+            pub fn toInt(self: Flags) u32 {
+                return @bitCast(self);
+            }
         };
 
         pub fn toStr(self: State, allocator: std.mem.Allocator) ![]const u8 {

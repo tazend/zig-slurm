@@ -94,12 +94,13 @@ pub const Job = extern struct {
     num_cpus: u32 = 0,
     num_nodes: u32 = 0,
     num_tasks: u32 = 0,
+    oom_kill_step: u16 = 0,
     partition: ?[*:0]u8 = null,
     prefer: ?[*:0]u8 = null,
     pn_min_memory: u64 = 0,
     pn_min_cpus: u16 = 0,
     pn_min_tmp_disk: u32 = 0,
-    power_flags: u8 = 0,
+    //    power_flags: u8 = 0,
     preempt_time: time_t = 0,
     preemptable_time: time_t = 0,
     pre_sus_time: time_t = 0,
@@ -182,7 +183,11 @@ pub const Job = extern struct {
         req.msg_type = cx.slurm_msg_type_t.request_batch_script;
         req.data = &msg;
 
-        try err.checkRpc(cx.slurm_send_recv_controller_msg(&req, &resp, c.working_cluster_rec));
+        try err.checkRpc(cx.slurm_send_recv_controller_msg(
+            &req,
+            &resp,
+            c.working_cluster_rec,
+        ));
 
         if (resp.msg_type == cx.slurm_msg_type_t.response_batch_script) {
             const data: ?[*:0]const u8 = @ptrCast(resp.data);
@@ -688,7 +693,7 @@ pub const State = struct {
 fn bitflagToStr(flags: anytype, allocator: std.mem.Allocator, padding_count: comptime_int) ![]const u8 {
     const sep = ",";
 
-    comptime var max_size = sep.len * (@typeInfo(@TypeOf(flags)).Struct.fields.len - 1 - padding_count);
+    comptime var max_size = sep.len * (@typeInfo(@TypeOf(flags)).@"struct".fields.len - 1 - padding_count);
     inline for (std.meta.fields(@TypeOf(flags))) |f| {
         if (f.type == bool) max_size += f.name.len;
     }
@@ -725,7 +730,7 @@ pub const MailFlags = packed struct(u16) {
 
     _padding1: u6 = 0,
 
-    pub const all: MailFlags = @bitCast(@as(u16, (1 << @typeInfo(MailFlags).Struct.fields.len - 1) - 1));
+    pub const all: MailFlags = @bitCast(@as(u16, (1 << @typeInfo(MailFlags).@"struct".fields.len - 1) - 1));
 
     pub fn toStr(self: MailFlags, allocator: std.mem.Allocator) ![]const u8 {
         return try bitflagToStr(self, allocator, 1);
@@ -813,7 +818,7 @@ fn parseDepStr(deps: []const u8, allocator: std.mem.Allocator) !?Dependencies {
     // There is always a state. There is no "fulfilled" state, because
     // fulfilled dependencies are already removed by the slurmctld from the
     // dependency list.
-    var iter = std.mem.split(u8, deps, sep);
+    var iter = std.mem.splitSequence(u8, deps, sep);
     while (iter.next()) |dep| {
         if (std.mem.eql(u8, dep, "singleton")) {
             depout.singleton = true;
@@ -895,21 +900,16 @@ pub fn parseGresStr(gres: []const u8) !GresEntry {
             // - count,gres or count,
             // - (IDX
             // - idxrange),gres (contains start of next item)
-            var has_count = false;
-            const ci = if (gres_items.next()) |it| blk: {
-                if (std.mem.containsAtLeast(u8, it, 1, "gres") or std.mem.containsAtLeast(u8, it, 1, ")")) {
-                    // no type
-                    break :blk type_or_count;
-                } else {
-                    break :blk it;
+            var ci = type_or_count;
+            if (gres_items.peek()) |it| {
+                if (!std.mem.containsAtLeast(u8, it, 1, "gres") and !std.mem.containsAtLeast(u8, it, 1, ")")) {
+                    ci = gres_items.next().?;
                 }
-            } else blk: {
-                break :blk "Test";
-            };
-            //        const item_no_delim = std.mem.trimLeft(u8, item, gres_delim);
-            //
+            }
 
-            // entry.count = try std.fmt.parseInt(u32, type_or_count, 10);
+            // std.debug.print("ci is: {s}\n", .{ci});
+            // std.debug.print("type_or_count is: {s}\n", .{type_or_count});
+            // std.debug.print("rest is: {?s}\n", .{gres_items.peek()});
             if (std.mem.containsAtLeast(u8, ci, 1, "(")) {
                 // count(IDX or (IDX
 
@@ -923,9 +923,12 @@ pub fn parseGresStr(gres: []const u8) !GresEntry {
                     // count(IDX
                     entry.count = try std.fmt.parseInt(u32, std.mem.sliceTo(ci, '('), 10);
                     entry.indexes = std.mem.sliceTo(idx_or_next_entry, ')');
-                    has_count = true;
                 }
-                entry.type = type_or_count;
+
+                if (!std.mem.eql(u8, type_or_count, ci)) {
+                    entry.type = type_or_count;
+                }
+
                 continue;
             } else if (std.mem.containsAtLeast(u8, ci, 1, ",")) {
                 // count,gres or count, or ,gres
@@ -933,42 +936,17 @@ pub fn parseGresStr(gres: []const u8) !GresEntry {
                     continue;
                 } else {
                     entry.count = try std.fmt.parseInt(u32, std.mem.sliceTo(ci, ','), 10);
-                    has_count = true;
                 }
             } else {
                 // type,count
-                entry.type = type_or_count;
-                entry.count = try std.fmt.parseInt(u32, ci, 10);
-                has_count = true;
+                if (!std.mem.eql(u8, type_or_count, ci)) {
+                    entry.count = try std.fmt.parseInt(u32, ci, 10);
+                    entry.type = type_or_count;
+                } else {
+                    entry.count = try std.fmt.parseInt(u32, type_or_count, 10);
+                }
             }
-
-            // type or count
-            if (has_count) {
-                entry.count = try std.fmt.parseInt(u32, type_or_count, 10);
-            } else entry.type = type_or_count;
         }
-
-        //      const delim: u8 = if (has_idx) '(' else ':';
-        //      var splitted = std.mem.splitScalar(u8, item_no_delim, delim);
-
-        //      var main = if (has_idx) std.mem.splitScalar(u8, splitted.first(), ':') else splitted;
-        //      const idx_str: ?[]const u8 = if (has_idx) splitted.rest() else null;
-
-        //      //    var entry = GresEntry{ .name = main.first() };
-        //      entry.name = main.first();
-        //      entry.type = main.next();
-        //      if (main.next()) |i| {
-        //          entry.count = try std.fmt.parseInt(u32, i, 10);
-        //      } else {
-        //          entry.count = try std.fmt.parseInt(u32, entry.type.?, 10);
-        //          entry.type = null;
-        //      }
-
-        //      if (idx_str) |val| {
-        //          // IDX:i,ii-iv,v)
-        //          const indexes = std.mem.trimRight(u8, val, ")");
-        //          entry.indexes = indexes[3..];
-        //      }
     }
 
     return entry;
@@ -1001,7 +979,9 @@ pub const KeyValuePair = struct {
 pub const InfoResponse = struct {
     msg: *ResponseMessage = undefined,
     count: u32 = 0,
-    items: [*]Job,
+    // TODO: Think again if this makes sense, or if we shouldn't just return
+    // null in loadAll() and loadOne()
+    items: ?[*]Job,
 
     const Self = @This();
 
@@ -1017,7 +997,7 @@ pub const InfoResponse = struct {
             if (it.count >= it.resp.count) return null;
             const id = it.count;
             it.count += 1;
-            const c_ptr: *Job = @ptrCast(&it.resp.items[id]);
+            const c_ptr: *Job = @ptrCast(&it.resp.items.?[id]);
             return c_ptr;
         }
 
@@ -1035,7 +1015,7 @@ pub const InfoResponse = struct {
 
     pub fn slice_raw(self: *Self) []Job {
         if (self.count == 0) return &.{};
-        return self.items[0..self.count];
+        return self.items.?[0..self.count];
     }
 };
 
@@ -1044,6 +1024,7 @@ pub fn loadAll() SlurmError!InfoResponse {
     try err.checkRpc(
         c.slurm_load_jobs(0, @ptrCast(&data), c.SHOW_DETAIL | c.SHOW_ALL),
     );
+
     return InfoResponse{
         .msg = data,
         .count = data.record_count,
@@ -1098,22 +1079,36 @@ test "bitflag_to_str" {
     try std.testing.expectEqualSlices(u8, "begin,end,invalid_depend", mf_str);
 }
 
-//  test "parseGresStr" {
-//      const s = "gpu:nvidia-a100:2(IDX:0,1)";
-//      const entry = try parseGresStr(s);
-//      try std.testing.expect(entry.type != null);
-//      try std.testing.expectEqualSlices(u8, "nvidia-a100", entry.type.?);
-//      try std.testing.expectEqualSlices(u8, "gpu", entry.name);
-//      try std.testing.expect(entry.indexes != null);
-//      try std.testing.expectEqualSlices(u8, "0,1", entry.indexes.?);
-//      try std.testing.expect(entry.count == 2);
+test "parseGresStr" {
+    const s = "gpu:nvidia-a100:2(IDX:0,1)";
+    const entry = try parseGresStr(s);
+    try std.testing.expect(entry.type != null);
+    try std.testing.expect(entry.indexes != null);
+    try std.testing.expectEqualSlices(u8, "nvidia-a100", entry.type.?);
+    try std.testing.expectEqualSlices(u8, "gpu", entry.name);
+    try std.testing.expectEqualSlices(u8, "0,1", entry.indexes.?);
+    try std.testing.expect(entry.count == 2);
 
-//      const s2 = "gres:gpu:2(IDX:0,1)";
-//      const entry2 = try parseGresStr(s2);
-//      try std.testing.expect(entry2.type != null);
-//      try std.testing.expectEqualSlices(u8, "nvidia-a100", entry2.type.?);
-//      try std.testing.expectEqualSlices(u8, "gpu", entry2.name);
-//      try std.testing.expect(entry2.indexes != null);
-//      try std.testing.expectEqualSlices(u8, "0,1", entry2.indexes.?);
-//      try std.testing.expect(entry2.count == 2);
-//  }
+    const s2 = "gres:gpu:10(IDX:0,1)";
+    const entry2 = try parseGresStr(s2);
+    try std.testing.expect(entry2.type == null);
+    try std.testing.expect(entry2.indexes != null);
+    try std.testing.expectEqualSlices(u8, "gpu", entry2.name);
+    try std.testing.expectEqualSlices(u8, "0,1", entry2.indexes.?);
+    try std.testing.expect(entry2.count == 10);
+
+    const s3 = "gres:gpu:nvidia-a100:20";
+    const entry3 = try parseGresStr(s3);
+    try std.testing.expect(entry3.type != null);
+    try std.testing.expect(entry3.indexes == null);
+    try std.testing.expectEqualSlices(u8, "gpu", entry3.name);
+    try std.testing.expectEqualSlices(u8, "nvidia-a100", entry3.type.?);
+    try std.testing.expect(entry3.count == 20);
+
+    const s4 = "gres:gpu:30,";
+    const entry4 = try parseGresStr(s4);
+    try std.testing.expect(entry4.type == null);
+    try std.testing.expect(entry4.indexes == null);
+    try std.testing.expectEqualSlices(u8, "gpu", entry4.name);
+    try std.testing.expect(entry4.count == 30);
+}

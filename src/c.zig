@@ -27,7 +27,6 @@ pub const persist_conn_type_t = enum(c_uint) {
 pub const persist_msg_t = extern struct {
     conn: ?*anyopaque = null,
     data: ?*anyopaque = null,
-    data_size: u32 = 0,
     msg_type: u16 = 0,
 };
 
@@ -51,6 +50,7 @@ pub const slurm_persist_conn_t = extern struct {
     shutdown: [*c]time_t = memzero([*c]time_t),
     thread_id: c.pthread_t = memzero(c.pthread_t),
     timeout: c_int = memzero(c_int),
+    tls_conn: ?*anyopaque = null,
     trigger_callbacks: c.slurm_trigger_callbacks_t = memzero(c.slurm_trigger_callbacks_t),
     version: u16 = 0,
 };
@@ -78,27 +78,31 @@ pub const slurm_msg_type_t = enum(u16) {
     request_batch_script = 2051,
     response_batch_script = 2052,
     response_slurm_rc = 8001,
+    _,
 };
 
 pub const forward_t = extern struct {
     alias_addrs: c.slurm_node_alias_addrs_t = memzero(c.slurm_node_alias_addrs_t),
     cnt: u16 = 0,
     init: u16 = 0,
-    nodelist: [*c]u8 = null,
+    nodelist: ?[*:0]u8 = null,
     timeout: u32 = 0,
     tree_width: u16 = 0,
+    tree_depth: u16 = 0,
 };
 
 pub const forward_struct_t = extern struct {
-    alias_addrs: *c.slurm_node_alias_addrs_t = null,
-    buf: [*c]u8 = null,
+    alias_addrs: ?*c.slurm_node_alias_addrs_t = null,
+    buf: ?[*:0]u8 = null,
     buf_len: c_int = 0,
     fwd_cnt: u16 = 0,
     forward_mutex: c.pthread_mutex_t = memzero(c.pthread_mutex_t),
     notify: c.pthread_cond_t = memzero(c.pthread_cond_t),
-    ret_list: *c.list_t = null,
+    ret_list: ?*c.list_t = null,
     timeout: u32 = memzero(u32),
 };
+
+pub const conmgr_fd_t = opaque {};
 
 pub const slurm_msg_t = extern struct {
     address: c.slurm_addr_t = memzero(c.slurm_addr_t),
@@ -110,19 +114,19 @@ pub const slurm_msg_t = extern struct {
     restrict_uid: c.uid_t = memzero(c.uid_t),
     restrict_uid_set: bool = memzero(bool),
     body_offset: u32 = memzero(u32),
-    buffer: *buf_t = null,
-    conn: *slurm_persist_conn_t = null,
+    buffer: ?*buf_t = null,
+    conn: ?*slurm_persist_conn_t = null,
     conn_fd: c_int = memzero(c_int),
+    conmgr_fd: ?*conmgr_fd_t = null,
     data: ?*anyopaque = null,
-    data_size: u32 = memzero(u32),
     flags: u16 = memzero(u16),
     hash_index: u8 = memzero(u8),
     msg_type: slurm_msg_type_t = memzero(slurm_msg_type_t),
     protocol_version: u16 = memzero(u16),
     forward: forward_t = memzero(forward_t),
-    forward_struct: *forward_struct_t = null,
+    forward_struct: ?*forward_struct_t = null,
     orig_addr: c.slurm_addr_t = memzero(c.slurm_addr_t),
-    ret_list: *c.list_t = null,
+    ret_list: ?*c.list_t = null,
 };
 
 pub extern fn slurm_free_return_code_msg(msg: *return_code_msg_t) void;

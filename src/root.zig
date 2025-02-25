@@ -7,6 +7,9 @@ pub const Job = @import("Job.zig");
 pub const Node = @import("Node.zig").Node;
 pub const uint = @import("uint.zig");
 pub const parseCStr = @import("common.zig").parseCStr;
+pub const parseCStrZ = @import("common.zig").parseCStrZ;
+pub const User = @import("user.zig").User;
+pub const DatabaseConnection = @import("user.zig").DatabaseConnection;
 
 pub const slurm_allocator = SlurmAllocator.slurm_allocator;
 
