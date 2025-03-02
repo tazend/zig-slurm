@@ -1,6 +1,8 @@
 const c = @import("c.zig").c;
 const std = @import("std");
 
+pub extern fn slurm_strerror(errnum: c_int) ?[*:0]u8;
+
 pub const ErrorBundle = struct {
     code: Error,
     description: [:0]const u8,
@@ -10,7 +12,7 @@ pub fn getErrorBundle() ?ErrorBundle {
     const errno = std.c._errno().*;
 
     checkRpc(errno) catch |error_code| {
-        const errstr = c.slurm_strerror(errno);
+        const errstr = slurm_strerror(errno);
         return ErrorBundle{
             .code = error_code,
             .description = std.mem.span(errstr),
@@ -25,7 +27,7 @@ pub fn getError() Error!void {
 
 pub fn getErrorString() ?[:0]const u8 {
     const errno = std.c._errno().*;
-    const errstr = c.slurm_strerror(errno);
+    const errstr = slurm_strerror(errno);
     return std.mem.span(errstr);
 }
 
