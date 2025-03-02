@@ -5,8 +5,8 @@ pub fn setupSlurmPath(b: *std.Build, target: *Compile, slurm_dir: ?[]const u8) !
     const dir: ?[]const u8 = if (slurm_dir) |d| d else std.posix.getenv("SLURM_INSTALL_DIR");
 
     if (dir) |d| {
-        target.addIncludePath(b.path(b.fmt("{s}/include", .{d})));
-        target.addLibraryPath(b.path(b.fmt("{s}/lib", .{d})));
+        target.addIncludePath(.{ .cwd_relative = (b.fmt("{s}/include", .{d})) });
+        target.addLibraryPath(.{ .cwd_relative = (b.fmt("{s}/lib64", .{d})) });
     }
 }
 
