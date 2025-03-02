@@ -6,7 +6,7 @@ pub const ErrorBundle = struct {
     description: [:0]const u8,
 };
 
-pub inline fn getErrorBundle() ?ErrorBundle {
+pub fn getErrorBundle() ?ErrorBundle {
     const errno = std.c._errno().*;
 
     checkRpc(errno) catch |error_code| {
@@ -19,11 +19,11 @@ pub inline fn getErrorBundle() ?ErrorBundle {
     return null;
 }
 
-pub inline fn getError() Error!void {
+pub fn getError() Error!void {
     return checkRpc(std.c._errno().*);
 }
 
-pub inline fn getErrorString() ?[:0]const u8 {
+pub fn getErrorString() ?[:0]const u8 {
     const errno = std.c._errno().*;
     const errstr = c.slurm_strerror(errno);
     return std.mem.span(errstr);
