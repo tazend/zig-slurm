@@ -1,5 +1,21 @@
 const std = @import("std");
 
+pub const CStr = [*:0]const u8;
+pub const BitString = i64;
+pub const NoValue = struct {
+    pub const @"u8": u8 = (1 << 8) - 2;
+    pub const @"u16": u16 = (1 << 16) - 2;
+    pub const @"u32": u32 = (1 << 32) - 2;
+    pub const @"u64": u64 = (1 << 64) - 2;
+};
+
+pub const Infinite = struct {
+    pub const @"u8": u8 = (1 << 8) - 1;
+    pub const @"u16": u16 = (1 << 16) - 1;
+    pub const @"u32": u32 = (1 << 32) - 1;
+    pub const @"u64": u64 = (1 << 64) - 1;
+};
+
 pub fn parseCStr(s: ?[*:0]u8) ?[]const u8 {
     if (s == null) return null;
     return std.mem.span(s);
