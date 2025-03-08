@@ -6,35 +6,41 @@ const SlurmError = @import("error.zig").Error;
 const time_t = std.os.linux.time_t;
 const JobIdList = std.ArrayList(JobId);
 const slurm_allocator = @import("SlurmAllocator.zig").slurm_allocator;
+const common = @import("common.zig");
+const NoValue = common.NoValue;
+const Infinite = common.Infinite;
+const CStr = common.CStr;
+const BitString = common.BitString;
 
 pub const JobId = u32;
-pub const ResponseMessage = c.job_info_msg_t;
+
+pub const JobResources = opaque {};
 
 pub const Job = extern struct {
-    account: ?[*:0]u8 = null,
+    account: ?CStr = null,
     accrue_time: time_t = 0,
-    admin_comment: ?[*:0]u8 = null,
-    alloc_node: ?[*:0]u8 = null,
+    admin_comment: ?CStr = null,
+    alloc_node: ?CStr = null,
     alloc_sid: u32 = 0,
-    array_bitmap: [*c]c.bitstr_t = null,
+    array_bitmap: ?[*]BitString = null,
     array_job_id: u32 = 0,
     array_task_id: u32 = 0,
     array_max_tasks: u32 = 0,
-    array_task_str: ?[*:0]u8 = null,
+    array_task_str: ?CStr = null,
     assoc_id: u32 = 0,
-    batch_features: ?[*:0]u8 = null,
+    batch_features: ?CStr = null,
     batch_flag: u16 = 0,
-    batch_host: ?[*:0]u8 = null,
+    batch_host: ?CStr = null,
     bitflags: u64 = 0,
     boards_per_node: u16 = 0,
-    burst_buffer: ?[*:0]u8 = null,
-    burst_buffer_state: ?[*:0]u8 = null,
-    cluster: ?[*:0]u8 = null,
-    cluster_features: ?[*:0]u8 = null,
-    command: ?[*:0]u8 = null,
-    comment: ?[*:0]u8 = null,
-    container: ?[*:0]u8 = null,
-    container_id: ?[*:0]u8 = null,
+    burst_buffer: ?CStr = null,
+    burst_buffer_state: ?CStr = null,
+    cluster: ?CStr = null,
+    cluster_features: ?CStr = null,
+    command: ?CStr = null,
+    comment: ?CStr = null,
+    container: ?CStr = null,
+    container_id: ?CStr = null,
     contiguous: u16 = 0,
     core_spec: u16 = 0,
     cores_per_socket: u16 = 0,
@@ -43,49 +49,49 @@ pub const Job = extern struct {
     cpu_freq_min: u32 = 0,
     cpu_freq_max: u32 = 0,
     cpu_freq_gov: u32 = 0,
-    cpus_per_tres: ?[*:0]u8 = null,
-    cronspec: ?[*:0]u8 = null,
+    cpus_per_tres: ?CStr = null,
+    cronspec: ?CStr = null,
     deadline: time_t = 0,
     delay_boot: u32 = 0,
-    dependency: ?[*:0]u8 = null,
+    dependency: ?CStr = null,
     derived_ec: u32 = 0,
     eligible_time: time_t = 0,
     end_time: time_t = 0,
-    exc_nodes: ?[*:0]u8 = null,
+    exc_nodes: ?CStr = null,
     exc_node_inx: ?[*]i32 = null,
     exit_code: u32 = 0,
-    extra: ?[*:0]u8 = null,
-    failed_node: ?[*:0]u8 = null,
-    features: ?[*:0]u8 = null,
-    fed_origin_str: ?[*:0]u8 = null,
+    extra: ?CStr = null,
+    failed_node: ?CStr = null,
+    features: ?CStr = null,
+    fed_origin_str: ?CStr = null,
     fed_siblings_active: u64 = 0,
-    fed_siblings_active_str: ?[*:0]u8 = null,
+    fed_siblings_active_str: ?CStr = null,
     fed_siblings_viable: u64 = 0,
-    fed_siblings_viable_str: ?[*:0]u8 = null,
+    fed_siblings_viable_str: ?CStr = null,
     gres_detail_cnt: u32 = 0,
-    gres_detail_str: [*c][*c]u8 = @import("std").mem.zeroes([*c][*c]u8),
-    gres_total: ?[*:0]u8 = null,
-    group_id: u32 = c.NO_VAL,
+    gres_detail_str: ?*CStr = null,
+    gres_total: ?CStr = null,
+    group_id: u32 = NoValue.u32,
     het_job_id: u32 = 0,
-    het_job_id_set: ?[*:0]u8 = null,
+    het_job_id_set: ?CStr = null,
     het_job_offset: u32 = 0,
     job_id: u32 = 0,
-    job_resrcs: ?*c.job_resources_t = null,
-    job_size_str: ?[*:0]u8 = null,
-    job_state: u32 = 0,
+    job_resrcs: ?*JobResources = null,
+    job_size_str: ?CStr = null,
+    state: State,
     last_sched_eval: time_t = 0,
-    licenses: ?[*:0]u8 = null,
-    mail_type: MailFlags = MailFlags{},
-    mail_user: ?[*:0]u8 = null,
+    licenses: ?CStr = null,
+    mail_type: MailFlags = .{},
+    mail_user: ?CStr = null,
     max_cpus: u32 = 0,
     max_nodes: u32 = 0,
-    mcs_label: ?[*:0]u8 = null,
-    mem_per_tres: ?[*:0]u8 = null,
-    name: ?[*:0]u8 = null,
-    network: ?[*:0]u8 = null,
-    nodes: ?[*:0]u8 = null,
-    nice: u32 = c.NO_VAL,
-    node_inx: [*c]i32 = @import("std").mem.zeroes([*c]i32),
+    mcs_label: ?CStr = null,
+    mem_per_tres: ?CStr = null,
+    name: ?CStr = null,
+    network: ?CStr = null,
+    nodes: ?CStr = null,
+    nice: u32 = NoValue.u32,
+    node_inx: ?[*]i32 = null,
     ntasks_per_core: u16 = 0,
     ntasks_per_tres: u16 = 0,
     ntasks_per_node: u16 = 0,
@@ -95,8 +101,8 @@ pub const Job = extern struct {
     num_nodes: u32 = 0,
     num_tasks: u32 = 0,
     oom_kill_step: u16 = 0,
-    partition: ?[*:0]u8 = null,
-    prefer: ?[*:0]u8 = null,
+    partition: ?CStr = null,
+    prefer: ?CStr = null,
     pn_min_memory: u64 = 0,
     pn_min_cpus: u16 = 0,
     pn_min_tmp_disk: u32 = 0,
@@ -105,75 +111,421 @@ pub const Job = extern struct {
     preemptable_time: time_t = 0,
     pre_sus_time: time_t = 0,
     priority: u32 = 0,
-    profile: ProfileTypes = ProfileTypes{},
-    qos: ?[*:0]u8 = null,
+    priority_array: ?[*]u32 = null,
+    priority_array_names: ?CStr = null,
+    profile: ProfileTypes = .{},
+    qos: ?CStr = null,
     reboot: u8 = 0,
-    req_nodes: ?[*:0]u8 = null,
-    req_node_inx: [*c]i32 = @import("std").mem.zeroes([*c]i32),
+    req_nodes: ?CStr = null,
+    req_node_inx: ?[*]i32 = null,
     req_switch: u32 = 0,
     requeue: u16 = 0,
     resize_time: time_t = 0,
     restart_cnt: u16 = 0,
-    resv_name: ?[*:0]u8 = null,
-    sched_nodes: ?[*:0]u8 = null,
-    selinux_context: ?[*:0]u8 = null,
-    shared: Oversubscription = Oversubscription.no,
-    show_flags: u16 = 0,
+    resv_name: ?CStr = null,
+    resv_ports: ?CStr = null,
+    sched_nodes: ?CStr = null,
+    selinux_context: ?CStr = null,
+    shared: Oversubscription = .no,
     site_factor: u32 = 0,
     sockets_per_board: u16 = 0,
     sockets_per_node: u16 = 0,
     start_time: time_t = 0,
     start_protocol_ver: u16 = 0,
-    state_desc: ?[*:0]u8 = null,
-    state_reason: State.Reason = State.Reason.wait_no_reason,
-    std_err: ?[*:0]u8 = null,
-    std_in: ?[*:0]u8 = null,
-    std_out: ?[*:0]u8 = null,
+    state_desc: ?CStr = null,
+    state_reason: State.Reason = .wait_no_reason,
+    std_err: ?CStr = null,
+    std_in: ?CStr = null,
+    std_out: ?CStr = null,
     submit_time: time_t = 0,
     suspend_time: time_t = 0,
-    system_comment: ?[*:0]u8 = null,
+    system_comment: ?CStr = null,
     time_limit: u32 = 0,
     time_min: u32 = 0,
     threads_per_core: u16 = 0,
-    tres_bind: ?[*:0]u8 = null,
-    tres_freq: ?[*:0]u8 = null,
-    tres_per_job: ?[*:0]u8 = null,
-    tres_per_node: ?[*:0]u8 = null,
-    tres_per_socket: ?[*:0]u8 = null,
-    tres_per_task: ?[*:0]u8 = null,
-    tres_req_str: ?[*:0]u8 = null,
-    tres_alloc_str: ?[*:0]u8 = null,
-    user_id: u32 = c.NO_VAL,
-    user_name: ?[*:0]u8 = null,
+    tres_bind: ?CStr = null,
+    tres_freq: ?CStr = null,
+    tres_per_job: ?CStr = null,
+    tres_per_node: ?CStr = null,
+    tres_per_socket: ?CStr = null,
+    tres_per_task: ?CStr = null,
+    tres_req_str: ?CStr = null,
+    tres_alloc_str: ?CStr = null,
+    user_id: u32 = NoValue.u32,
+    user_name: ?CStr = null,
     wait4switch: u32 = 0,
-    wckey: ?[*:0]u8 = null,
-    work_dir: ?[*:0]u8 = null,
+    wckey: ?CStr = null,
+    work_dir: ?CStr = null,
 
-    pub fn memoryPerCpu(self: Job) ?u64 {
+    pub const LoadResponse = extern struct {
+        last_backfill: time_t,
+        last_update: time_t,
+        count: u32 = 0,
+        items: ?[*]Job = null,
+
+        extern fn slurm_free_job_info_msg(job_buffer_ptr: ?*LoadResponse) void;
+        pub fn deinit(self: *LoadResponse) void {
+            slurm_free_job_info_msg(self);
+        }
+
+        pub const Iterator = struct {
+            data: *LoadResponse,
+            count: usize,
+
+            pub fn next(self: *Iterator) ?*Job {
+                const id = self.count;
+                defer self.count += 1;
+                return self.data.get_job_by_index(id);
+            }
+
+            pub fn reset(self: *Iterator) void {
+                self.count = 0;
+            }
+        };
+
+        pub fn get_job_by_index(self: *LoadResponse, idx: usize) ?*Job {
+            if (idx >= self.count) return null;
+            return &self.items.?[idx];
+        }
+
+        pub fn iter(self: *LoadResponse) Iterator {
+            return Iterator{
+                .data = self,
+                .count = 0,
+            };
+        }
+    };
+
+    pub const State = packed struct(u32) {
+        base: Base,
+        flags: Flags,
+
+        pub const Base = enum(u8) {
+            pending,
+            running,
+            suspended,
+            complete,
+            cancelled,
+            failed,
+            timeout,
+            node_fail,
+            preempted,
+            boot_fail,
+            deadline,
+            oom,
+            _end,
+        };
+
+        pub const Flags = packed struct(u24) {
+            launch_failed: bool = false,
+            update_job: bool = false,
+            requeue: bool = false,
+            requeue_hold: bool = false,
+            special_exit: bool = false,
+            resizing: bool = false,
+            configuring: bool = false,
+            completing: bool = false,
+            stopped: bool = false,
+            reconfig_fail: bool = false,
+            power_up_node: bool = false,
+            revoked: bool = false,
+            requeue_fed: bool = false,
+            resv_del_hold: bool = false,
+            signaling: bool = false,
+            stage_out: bool = false,
+            // TODO: Consider moving this out of here, ordered after "flags"
+            // directly.
+            __padding1: u8 = 0,
+
+            pub fn toStr(self: State.Flags) ?[]const u8 {
+                inline for (std.meta.fields(@TypeOf(self))) |f| {
+                    if (f.type == bool and @as(f.type, @field(self, f.name))) {
+                        return f.name;
+                    }
+                }
+                return null;
+            }
+
+            pub fn eql(a: State.Flags, b: State.Flags) bool {
+                return @as(u24, @bitCast(a)) == @as(u24, @bitCast(b));
+            }
+        };
+
+        pub fn toStr(self: State) []const u8 {
+            return if (!State.Flags.eql(self.flags, State.Flags{}))
+                self.flags.toStr().?
+            else if (@intFromEnum(self.base) < @intFromEnum(State.Base._end))
+                @tagName(self.base)
+            else
+                "unknown";
+        }
+
+        pub const Reason = enum(u32) {
+            wait_no_reason,
+            wait_priority,
+            wait_dependency,
+            wait_resources,
+            wait_part_node_limit,
+            wait_part_time_limit,
+            wait_part_down,
+            wait_part_inactive,
+            wait_held,
+            wait_time,
+            wait_licenses,
+            wait_assoc_job_limit,
+            wait_assoc_resource_limit,
+            wait_assoc_time_limit,
+            wait_reservation,
+            wait_node_not_avail,
+            wait_held_user,
+            wait_front_end,
+            fail_defer,
+            fail_down_partition,
+            fail_down_node,
+            fail_bad_constraints,
+            fail_system,
+            fail_launch,
+            fail_exit_code,
+            fail_timeout,
+            fail_inactive_limit,
+            fail_account,
+            fail_qos,
+            wait_qos_thres,
+            wait_qos_job_limit,
+            wait_qos_resource_limit,
+            wait_qos_time_limit,
+            fail_signal,
+            _defunct_wait_34,
+            wait_cleaning,
+            wait_prolog,
+            wait_qos,
+            wait_account,
+            wait_dep_invalid,
+            wait_qos_grp_cpu,
+            wait_qos_grp_cpu_min,
+            wait_qos_grp_cpu_run_min,
+            wait_qos_grp_job,
+            wait_qos_grp_mem,
+            wait_qos_grp_node,
+            wait_qos_grp_sub_job,
+            wait_qos_grp_wall,
+            wait_qos_max_cpu_per_job,
+            wait_qos_max_cpu_mins_per_job,
+            wait_qos_max_node_per_job,
+            wait_qos_max_wall_per_job,
+            wait_qos_max_cpu_per_user,
+            wait_qos_max_job_per_user,
+            wait_qos_max_node_per_user,
+            wait_qos_max_sub_job,
+            wait_qos_min_cpu,
+            wait_assoc_grp_cpu,
+            wait_assoc_grp_cpu_min,
+            wait_assoc_grp_cpu_run_min,
+            wait_assoc_grp_job,
+            wait_assoc_grp_mem,
+            wait_assoc_grp_node,
+            wait_assoc_grp_sub_job,
+            wait_assoc_grp_wall,
+            wait_assoc_max_jobs,
+            wait_assoc_max_cpu_per_job,
+            wait_assoc_max_cpu_mins_per_job,
+            wait_assoc_max_node_per_job,
+            wait_assoc_max_wall_per_job,
+            wait_assoc_max_sub_job,
+            wait_max_requeue,
+            wait_array_task_limit,
+            wait_burst_buffer_resource,
+            wait_burst_buffer_staging,
+            fail_burst_buffer_op,
+            wait_power_not_avail,
+            wait_power_reserved,
+            wait_assoc_grp_unk,
+            wait_assoc_grp_unk_min,
+            wait_assoc_grp_unk_run_min,
+            wait_assoc_max_unk_per_job,
+            wait_assoc_max_unk_per_node,
+            wait_assoc_max_unk_mins_per_job,
+            wait_assoc_max_cpu_per_node,
+            wait_assoc_grp_mem_min,
+            wait_assoc_grp_mem_run_min,
+            wait_assoc_max_mem_per_job,
+            wait_assoc_max_mem_per_node,
+            wait_assoc_max_mem_mins_per_job,
+            wait_assoc_grp_node_min,
+            wait_assoc_grp_node_run_min,
+            wait_assoc_max_node_mins_per_job,
+            wait_assoc_grp_energy,
+            wait_assoc_grp_energy_min,
+            wait_assoc_grp_energy_run_min,
+            wait_assoc_max_energy_per_job,
+            wait_assoc_max_energy_per_node,
+            wait_assoc_max_energy_mins_per_job,
+            wait_assoc_grp_gres,
+            wait_assoc_grp_gres_min,
+            wait_assoc_grp_gres_run_min,
+            wait_assoc_max_gres_per_job,
+            wait_assoc_max_gres_per_node,
+            wait_assoc_max_gres_mins_per_job,
+            wait_assoc_grp_lic,
+            wait_assoc_grp_lic_min,
+            wait_assoc_grp_lic_run_min,
+            wait_assoc_max_lic_per_job,
+            wait_assoc_max_lic_mins_per_job,
+            wait_assoc_grp_bb,
+            wait_assoc_grp_bb_min,
+            wait_assoc_grp_bb_run_min,
+            wait_assoc_max_bb_per_job,
+            wait_assoc_max_bb_per_node,
+            wait_assoc_max_bb_mins_per_job,
+            wait_qos_grp_unk,
+            wait_qos_grp_unk_min,
+            wait_qos_grp_unk_run_min,
+            wait_qos_max_unk_per_job,
+            wait_qos_max_unk_per_node,
+            wait_qos_max_unk_per_user,
+            wait_qos_max_unk_mins_per_job,
+            wait_qos_min_unk,
+            wait_qos_max_cpu_per_node,
+            wait_qos_grp_mem_min,
+            wait_qos_grp_mem_run_min,
+            wait_qos_max_mem_mins_per_job,
+            wait_qos_max_mem_per_job,
+            wait_qos_max_mem_per_node,
+            wait_qos_max_mem_per_user,
+            wait_qos_min_mem,
+            wait_qos_grp_energy,
+            wait_qos_grp_energy_min,
+            wait_qos_grp_energy_run_min,
+            wait_qos_max_energy_per_job,
+            wait_qos_max_energy_per_node,
+            wait_qos_max_energy_per_user,
+            wait_qos_max_energy_mins_per_job,
+            wait_qos_min_energy,
+            wait_qos_grp_node_min,
+            wait_qos_grp_node_run_min,
+            wait_qos_max_node_mins_per_job,
+            wait_qos_min_node,
+            wait_qos_grp_gres,
+            wait_qos_grp_gres_min,
+            wait_qos_grp_gres_run_min,
+            wait_qos_max_gres_per_job,
+            wait_qos_max_gres_per_node,
+            wait_qos_max_gres_per_user,
+            wait_qos_max_gres_mins_per_job,
+            wait_qos_min_gres,
+            wait_qos_grp_lic,
+            wait_qos_grp_lic_min,
+            wait_qos_grp_lic_run_min,
+            wait_qos_max_lic_per_job,
+            wait_qos_max_lic_per_user,
+            wait_qos_max_lic_mins_per_job,
+            wait_qos_min_lic,
+            wait_qos_grp_bb,
+            wait_qos_grp_bb_min,
+            wait_qos_grp_bb_run_min,
+            wait_qos_max_bb_per_job,
+            wait_qos_max_bb_per_node,
+            wait_qos_max_bb_per_user,
+            wait_qos_max_bb_mins_per_job,
+            wait_qos_min_bb,
+            fail_deadline,
+            wait_qos_max_bb_per_acct,
+            wait_qos_max_cpu_per_acct,
+            wait_qos_max_energy_per_acct,
+            wait_qos_max_gres_per_acct,
+            wait_qos_max_node_per_acct,
+            wait_qos_max_lic_per_acct,
+            wait_qos_max_mem_per_acct,
+            wait_qos_max_unk_per_acct,
+            wait_qos_max_job_per_acct,
+            wait_qos_max_sub_job_per_acct,
+            wait_part_config,
+            wait_account_policy,
+            wait_fed_job_lock,
+            fail_oom,
+            wait_pn_mem_limit,
+            wait_assoc_grp_billing,
+            wait_assoc_grp_billing_min,
+            wait_assoc_grp_billing_run_min,
+            wait_assoc_max_billing_per_job,
+            wait_assoc_max_billing_per_node,
+            wait_assoc_max_billing_mins_per_job,
+            wait_qos_grp_billing,
+            wait_qos_grp_billing_min,
+            wait_qos_grp_billing_run_min,
+            wait_qos_max_billing_per_job,
+            wait_qos_max_billing_per_node,
+            wait_qos_max_billing_per_user,
+            wait_qos_max_billing_mins_per_job,
+            wait_qos_max_billing_per_acct,
+            wait_qos_min_billing,
+            wait_resv_deleted,
+            wait_resv_invalid,
+            fail_constraints,
+            _,
+
+            pub fn hasVal(self: @This()) bool {
+                return @intFromEnum(self) != NoValue.u32;
+            }
+
+            pub fn toStr(self: State.Reason) []const u8 {
+                return @tagName(self);
+            }
+        };
+    };
+
+    pub fn memoryPerCpu(self: *Job) ?u64 {
         const mem = self.pn_min_memory;
-        if (mem != c.NO_VAL64 and (mem & c.MEM_PER_CPU) != 0) {
+        if (mem != NoValue.u64 and (mem & c.MEM_PER_CPU) != 0) {
             return mem & (~c.MEM_PER_CPU);
         } else return null;
     }
 
-    pub fn memoryPerNode(self: Job) ?u64 {
+    pub fn memoryPerNode(self: *Job) ?u64 {
         const mem = self.pn_min_memory;
-        if (mem != c.NO_VAL64 and (mem & c.MEM_PER_CPU) == 0) {
+        if (mem != NoValue.u64 and (mem & c.MEM_PER_CPU) == 0) {
             return mem;
         } else return null;
     }
 
-    pub fn memory(self: Job) u64 {
-        return if (self.memoryPerNode()) |mem|
-            mem * self.num_nodes
-        else if (self.memoryPerCpu()) |mem|
-            mem * self.num_cpus
-            // TODO: GPU
-        else
-            0;
+    pub const MemoryPerResource = union(enum) {
+        cpu: u64,
+        node: u64,
+        gpu: u64,
+    };
+
+    const MemoryPerResourceError = error{NoValue};
+    pub fn memoryPerResource(self: *Job) MemoryPerResourceError!MemoryPerResource {
+        const mem = self.pn_min_memory;
+        const mem_tres = self.mem_per_tres;
+
+        if (mem != NoValue.u64) {
+            return if ((mem & c.MEM_PER_CPU) == 0)
+                .{ .node = mem }
+            else
+                .{ .cpu = mem & (~c.MEM_PER_CPU) };
+        } else if (mem_tres) |v| {
+            // TODO: TRES Parser
+            _ = v;
+            return .{ .gpu = 0 };
+        }
+
+        return error.NoValue;
     }
 
-    pub fn getBatchScript(self: Job, allocator: std.mem.Allocator) ![]const u8 {
+    pub fn memory(self: *Job) u64 {
+        const mem = self.memoryPerResource() catch {
+            return 0;
+        };
+
+        return switch (mem) {
+            .cpu => |v| v,
+            .node => |v| v,
+            .gpu => |v| v,
+        };
+    }
+
+    pub fn getBatchScript(self: Job, allocator: std.mem.Allocator) ![:0]const u8 {
         var msg: cx.job_id_msg_t = .{ .job_id = self.job_id };
         var req: cx.slurm_msg_t = undefined;
         var resp: cx.slurm_msg_t = undefined;
@@ -193,7 +545,7 @@ pub const Job = extern struct {
             const data: ?[*:0]const u8 = @ptrCast(resp.data);
             if (data) |d| {
                 const tmp: []const u8 = std.mem.span(d);
-                const script = try allocator.dupe(u8, tmp);
+                const script = try allocator.dupeZ(u8, tmp);
                 slurm_allocator.free(tmp);
                 return script;
             } else return error.Generic;
@@ -209,54 +561,38 @@ pub const Job = extern struct {
         }
     }
 
-    //  pub fn profileTypes(self: Job) ?ProfileTypes {
-    //      if (self.profile == c.NO_VAL or self.profile == c.ACCT_GATHER_PROFILE_NOT_SET) {
-    //          return null;
-    //      }
-
-    //      if ((self.profile & c.ACCT_GATHER_PROFILE_ALL) == 0) {
-    //          return ProfileTypes.all;
-    //      }
-
-    //      return @bitCast(self.profile);
-    //  }
-
-    pub fn getStdOut(self: *Job) [1024]u8 {
-        var buf: [1024]u8 = std.mem.zeroes([1024]u8);
-        c.slurm_get_job_stdout(&buf, buf.len, @ptrCast(self));
+    extern fn slurm_get_job_stdout(buf: ?[*]u8, buf_size: c_int, job_ptr: *Job) void;
+    pub fn getStdOut(self: *Job) [1024:0]u8 {
+        var buf: [1024:0]u8 = std.mem.zeroes([1024:0]u8);
+        slurm_get_job_stdout(&buf, buf.len, @ptrCast(self));
         return buf;
     }
 
-    pub fn getStdErr(self: *Job) [1024]u8 {
-        var buf: [1024]u8 = std.mem.zeroes([1024]u8);
+    extern fn slurm_get_job_stderr(buf: ?[*]u8, buf_size: c_int, job_ptr: *Job) void;
+    pub fn getStdErr(self: *Job) [1024:0]u8 {
+        var buf: [1024:0]u8 = std.mem.zeroes([1024:0]u8);
         c.slurm_get_job_stderr(&buf, buf.len, @ptrCast(self));
         return buf;
     }
 
-    pub fn getStdIn(self: *Job) [1024]u8 {
-        var buf: [1024]u8 = std.mem.zeroes([1024]u8);
+    extern fn slurm_get_job_stdin(buf: ?[*]u8, buf_size: c_int, job_ptr: *Job) void;
+    pub fn getStdIn(self: *Job) [1024:0]u8 {
+        var buf: [1024:0]u8 = std.mem.zeroes([1024:0]u8);
         c.slurm_get_job_stdin(&buf, buf.len, @ptrCast(self));
         return buf;
     }
 
-    pub inline fn getNice(self: Job) ?i64 {
-        return if (self.nice != c.NO_VAL)
-            @as(i64, self.nice) - c.NICE_OFFSET
+    const nice_offset = 2147483648;
+    pub fn getNice(self: Job) ?i64 {
+        return if (self.nice != NoValue.u32)
+            @as(i64, self.nice) - nice_offset
         else
             null;
     }
 
-    pub fn state(self: Job) State {
-        return .{
-            .base = @enumFromInt(self.job_state & c.JOB_STATE_BASE),
-            .flags = @bitCast(self.job_state & c.JOB_STATE_FLAGS),
-            .reason = self.state_reason,
-        };
-    }
-
     pub fn runTime(self: Job) time_t {
         const job: Job = self;
-        const status = self.state();
+        const status = self.state;
         var rtime: time_t = 0;
         var etime: time_t = undefined;
 
@@ -282,20 +618,20 @@ pub const Job = extern struct {
     }
 
     pub fn cpuTime(self: Job) time_t {
-        return if (self.num_cpus != c.NO_VAL)
+        return if (self.num_cpus != NoValue.u32)
             self.num_cpus * self.runTime()
         else
             0;
     }
 
-    pub inline fn arrayTasksWaiting(self: Job) ?[]const u8 {
+    pub fn arrayTasksWaiting(self: Job) ?[]const u8 {
         return if (self.array_task_str) |tasks|
             return std.mem.sliceTo(tasks, '%')
         else
             null;
     }
 
-    pub inline fn dependencies(self: Job, allocator: std.mem.Allocator) !?Dependencies {
+    pub fn dependencies(self: Job, allocator: std.mem.Allocator) !?Dependencies {
         return if (self.dependency) |dep|
             try parseDepStr(std.mem.span(dep), allocator)
         else
@@ -314,27 +650,27 @@ pub const Job = extern struct {
         } else ExitState{};
     }
 
-    pub inline fn exitState(self: Job) ExitState {
+    pub fn exitState(self: Job) ExitState {
         return parseExitState(self.exit_code);
     }
 
-    pub inline fn derivedExitState(self: Job) ExitState {
+    pub fn derivedExitState(self: Job) ExitState {
         return parseExitState(self.derived_ec);
     }
 
-    pub inline fn sendSignal(self: Job, signal: u16, flags: u16) SlurmError!void {
+    pub fn sendSignal(self: Job, signal: u16, flags: u16) SlurmError!void {
         try err.checkRpc(c.slurm_kill_job(self.job_id, signal, flags));
     }
 
-    pub inline fn cancel(self: Job) SlurmError!void {
+    pub fn cancel(self: Job) SlurmError!void {
         try self.sendSignal(9, 0);
     }
 
-    pub inline fn suspendx(self: Job) SlurmError!void {
+    pub fn @"suspend"(self: Job) SlurmError!void {
         try err.checkRpc(c.slurm_suspend(self.job_id));
     }
 
-    pub inline fn unsuspend(self: Job) SlurmError!void {
+    pub fn unsuspend(self: Job) SlurmError!void {
         try err.checkRpc(c.slurm_resume(self.job_id));
     }
 
@@ -371,13 +707,6 @@ pub const SignalFlags = packed struct(u16) {
     jobs_verbose: bool = false,
 
     _padding1: u4 = 0,
-
-    comptime {
-        std.debug.assert(
-            @sizeOf(@This()) == @sizeOf(u16) and
-                @bitSizeOf(@This()) == @bitSizeOf(u16),
-        );
-    }
 };
 
 pub const ProfileTypes = packed struct(u32) {
@@ -394,300 +723,6 @@ pub const ProfileTypes = packed struct(u32) {
     pub fn toStr(self: @This(), allocator: std.mem.Allocator) ![]const u8 {
         return try bitflagToStr(self, allocator, 2);
     }
-
-    comptime {
-        std.debug.assert(
-            @sizeOf(@This()) == @sizeOf(u32) and
-                @bitSizeOf(@This()) == @bitSizeOf(u32),
-        );
-    }
-};
-
-pub const State = struct {
-    base: State.Base,
-    flags: State.Flags,
-    reason: State.Reason,
-
-    pub const Base = enum {
-        pending,
-        running,
-        suspended,
-        complete,
-        cancelled,
-        failed,
-        timeout,
-        node_fail,
-        preempted,
-        boot_fail,
-        deadline,
-        oom,
-        _end,
-    };
-
-    pub const Flags = packed struct(u32) {
-        _padding1: u8 = 0,
-
-        launch_failed: bool = false,
-        update_job: bool = false,
-        requeue: bool = false,
-        requeue_hold: bool = false,
-        special_exit: bool = false,
-        resizing: bool = false,
-        configuring: bool = false,
-        completing: bool = false,
-        stopped: bool = false,
-        reconfig_fail: bool = false,
-        power_up_node: bool = false,
-        revoked: bool = false,
-        requeue_fed: bool = false,
-        resv_del_hold: bool = false,
-        signaling: bool = false,
-        stage_out: bool = false,
-
-        _padding2: u8 = 0,
-
-        pub fn toStr(self: State.Flags) ?[]const u8 {
-            inline for (std.meta.fields(@TypeOf(self))) |f| {
-                if (f.type == bool and @as(f.type, @field(self, f.name))) {
-                    return f.name;
-                }
-            }
-            return null;
-        }
-
-        pub fn equal(a: State.Flags, b: State.Flags) bool {
-            return @as(u32, @bitCast(a)) == @as(u32, @bitCast(b));
-        }
-
-        comptime {
-            std.debug.assert(
-                @sizeOf(@This()) == @sizeOf(u32) and
-                    @bitSizeOf(@This()) == @bitSizeOf(u32),
-            );
-        }
-    };
-
-    pub fn toStr(self: State) []const u8 {
-        return if (!State.Flags.equal(self.flags, State.Flags{}))
-            self.flags.toStr().?
-        else if (@intFromEnum(self.base) < c.JOB_END)
-            @tagName(self.base)
-        else
-            "unknown";
-    }
-
-    pub const Reason = enum(u32) {
-        wait_no_reason,
-        wait_priority,
-        wait_dependency,
-        wait_resources,
-        wait_part_node_limit,
-        wait_part_time_limit,
-        wait_part_down,
-        wait_part_inactive,
-        wait_held,
-        wait_time,
-        wait_licenses,
-        wait_assoc_job_limit,
-        wait_assoc_resource_limit,
-        wait_assoc_time_limit,
-        wait_reservation,
-        wait_node_not_avail,
-        wait_held_user,
-        wait_front_end,
-        fail_defer,
-        fail_down_partition,
-        fail_down_node,
-        fail_bad_constraints,
-        fail_system,
-        fail_launch,
-        fail_exit_code,
-        fail_timeout,
-        fail_inactive_limit,
-        fail_account,
-        fail_qos,
-        wait_qos_thres,
-        wait_qos_job_limit,
-        wait_qos_resource_limit,
-        wait_qos_time_limit,
-        fail_signal,
-        _defunct_wait_34,
-        wait_cleaning,
-        wait_prolog,
-        wait_qos,
-        wait_account,
-        wait_dep_invalid,
-        wait_qos_grp_cpu,
-        wait_qos_grp_cpu_min,
-        wait_qos_grp_cpu_run_min,
-        wait_qos_grp_job,
-        wait_qos_grp_mem,
-        wait_qos_grp_node,
-        wait_qos_grp_sub_job,
-        wait_qos_grp_wall,
-        wait_qos_max_cpu_per_job,
-        wait_qos_max_cpu_mins_per_job,
-        wait_qos_max_node_per_job,
-        wait_qos_max_wall_per_job,
-        wait_qos_max_cpu_per_user,
-        wait_qos_max_job_per_user,
-        wait_qos_max_node_per_user,
-        wait_qos_max_sub_job,
-        wait_qos_min_cpu,
-        wait_assoc_grp_cpu,
-        wait_assoc_grp_cpu_min,
-        wait_assoc_grp_cpu_run_min,
-        wait_assoc_grp_job,
-        wait_assoc_grp_mem,
-        wait_assoc_grp_node,
-        wait_assoc_grp_sub_job,
-        wait_assoc_grp_wall,
-        wait_assoc_max_jobs,
-        wait_assoc_max_cpu_per_job,
-        wait_assoc_max_cpu_mins_per_job,
-        wait_assoc_max_node_per_job,
-        wait_assoc_max_wall_per_job,
-        wait_assoc_max_sub_job,
-        wait_max_requeue,
-        wait_array_task_limit,
-        wait_burst_buffer_resource,
-        wait_burst_buffer_staging,
-        fail_burst_buffer_op,
-        wait_power_not_avail,
-        wait_power_reserved,
-        wait_assoc_grp_unk,
-        wait_assoc_grp_unk_min,
-        wait_assoc_grp_unk_run_min,
-        wait_assoc_max_unk_per_job,
-        wait_assoc_max_unk_per_node,
-        wait_assoc_max_unk_mins_per_job,
-        wait_assoc_max_cpu_per_node,
-        wait_assoc_grp_mem_min,
-        wait_assoc_grp_mem_run_min,
-        wait_assoc_max_mem_per_job,
-        wait_assoc_max_mem_per_node,
-        wait_assoc_max_mem_mins_per_job,
-        wait_assoc_grp_node_min,
-        wait_assoc_grp_node_run_min,
-        wait_assoc_max_node_mins_per_job,
-        wait_assoc_grp_energy,
-        wait_assoc_grp_energy_min,
-        wait_assoc_grp_energy_run_min,
-        wait_assoc_max_energy_per_job,
-        wait_assoc_max_energy_per_node,
-        wait_assoc_max_energy_mins_per_job,
-        wait_assoc_grp_gres,
-        wait_assoc_grp_gres_min,
-        wait_assoc_grp_gres_run_min,
-        wait_assoc_max_gres_per_job,
-        wait_assoc_max_gres_per_node,
-        wait_assoc_max_gres_mins_per_job,
-        wait_assoc_grp_lic,
-        wait_assoc_grp_lic_min,
-        wait_assoc_grp_lic_run_min,
-        wait_assoc_max_lic_per_job,
-        wait_assoc_max_lic_mins_per_job,
-        wait_assoc_grp_bb,
-        wait_assoc_grp_bb_min,
-        wait_assoc_grp_bb_run_min,
-        wait_assoc_max_bb_per_job,
-        wait_assoc_max_bb_per_node,
-        wait_assoc_max_bb_mins_per_job,
-        wait_qos_grp_unk,
-        wait_qos_grp_unk_min,
-        wait_qos_grp_unk_run_min,
-        wait_qos_max_unk_per_job,
-        wait_qos_max_unk_per_node,
-        wait_qos_max_unk_per_user,
-        wait_qos_max_unk_mins_per_job,
-        wait_qos_min_unk,
-        wait_qos_max_cpu_per_node,
-        wait_qos_grp_mem_min,
-        wait_qos_grp_mem_run_min,
-        wait_qos_max_mem_mins_per_job,
-        wait_qos_max_mem_per_job,
-        wait_qos_max_mem_per_node,
-        wait_qos_max_mem_per_user,
-        wait_qos_min_mem,
-        wait_qos_grp_energy,
-        wait_qos_grp_energy_min,
-        wait_qos_grp_energy_run_min,
-        wait_qos_max_energy_per_job,
-        wait_qos_max_energy_per_node,
-        wait_qos_max_energy_per_user,
-        wait_qos_max_energy_mins_per_job,
-        wait_qos_min_energy,
-        wait_qos_grp_node_min,
-        wait_qos_grp_node_run_min,
-        wait_qos_max_node_mins_per_job,
-        wait_qos_min_node,
-        wait_qos_grp_gres,
-        wait_qos_grp_gres_min,
-        wait_qos_grp_gres_run_min,
-        wait_qos_max_gres_per_job,
-        wait_qos_max_gres_per_node,
-        wait_qos_max_gres_per_user,
-        wait_qos_max_gres_mins_per_job,
-        wait_qos_min_gres,
-        wait_qos_grp_lic,
-        wait_qos_grp_lic_min,
-        wait_qos_grp_lic_run_min,
-        wait_qos_max_lic_per_job,
-        wait_qos_max_lic_per_user,
-        wait_qos_max_lic_mins_per_job,
-        wait_qos_min_lic,
-        wait_qos_grp_bb,
-        wait_qos_grp_bb_min,
-        wait_qos_grp_bb_run_min,
-        wait_qos_max_bb_per_job,
-        wait_qos_max_bb_per_node,
-        wait_qos_max_bb_per_user,
-        wait_qos_max_bb_mins_per_job,
-        wait_qos_min_bb,
-        fail_deadline,
-        wait_qos_max_bb_per_acct,
-        wait_qos_max_cpu_per_acct,
-        wait_qos_max_energy_per_acct,
-        wait_qos_max_gres_per_acct,
-        wait_qos_max_node_per_acct,
-        wait_qos_max_lic_per_acct,
-        wait_qos_max_mem_per_acct,
-        wait_qos_max_unk_per_acct,
-        wait_qos_max_job_per_acct,
-        wait_qos_max_sub_job_per_acct,
-        wait_part_config,
-        wait_account_policy,
-        wait_fed_job_lock,
-        fail_oom,
-        wait_pn_mem_limit,
-        wait_assoc_grp_billing,
-        wait_assoc_grp_billing_min,
-        wait_assoc_grp_billing_run_min,
-        wait_assoc_max_billing_per_job,
-        wait_assoc_max_billing_per_node,
-        wait_assoc_max_billing_mins_per_job,
-        wait_qos_grp_billing,
-        wait_qos_grp_billing_min,
-        wait_qos_grp_billing_run_min,
-        wait_qos_max_billing_per_job,
-        wait_qos_max_billing_per_node,
-        wait_qos_max_billing_per_user,
-        wait_qos_max_billing_mins_per_job,
-        wait_qos_max_billing_per_acct,
-        wait_qos_min_billing,
-        wait_resv_deleted,
-        wait_resv_invalid,
-        fail_constraints,
-        _,
-
-        pub fn hasVal(self: @This()) bool {
-            return @intFromEnum(self) != c.NO_VAL;
-        }
-
-        pub fn toStr(self: State.Reason) []const u8 {
-            return @tagName(self);
-        }
-    };
 };
 
 fn bitflagToStr(flags: anytype, allocator: std.mem.Allocator, padding_count: comptime_int) ![]const u8 {
@@ -735,13 +770,6 @@ pub const MailFlags = packed struct(u16) {
     pub fn toStr(self: MailFlags, allocator: std.mem.Allocator) ![]const u8 {
         return try bitflagToStr(self, allocator, 1);
     }
-
-    comptime {
-        std.debug.assert(
-            @sizeOf(@This()) == @sizeOf(u16) and
-                @bitSizeOf(@This()) == @bitSizeOf(u16),
-        );
-    }
 };
 
 pub const HoldMode = enum {
@@ -754,7 +782,7 @@ pub const Oversubscription = enum(u16) {
     yes,
     user,
     mcs,
-    not_set = @as(u32, (1 << 16) - 2),
+    not_set = @as(u16, (1 << 16) - 2),
 
     pub fn hasVal(self: Oversubscription) bool {
         return self != Oversubscription.not_set;
@@ -767,11 +795,6 @@ pub const Oversubscription = enum(u16) {
             "no";
     }
 };
-
-pub inline fn parseCStr(s: [*c]u8) ?[]const u8 {
-    if (s == null) return null;
-    return std.mem.span(s);
-}
 
 pub const ExitState = struct {
     code: u32 = 0,
@@ -976,72 +999,25 @@ pub const KeyValuePair = struct {
     }
 };
 
-pub const InfoResponse = struct {
-    msg: *ResponseMessage = undefined,
-    count: u32 = 0,
-    // TODO: Think again if this makes sense, or if we shouldn't just return
-    // null in loadAll() and loadOne()
-    items: ?[*]Job,
-
-    const Self = @This();
-
-    pub inline fn deinit(self: Self) void {
-        c.slurm_free_job_info_msg(self.msg);
-    }
-
-    pub const Iterator = struct {
-        resp: *InfoResponse,
-        count: usize,
-
-        pub fn next(it: *Iterator) ?*Job {
-            if (it.count >= it.resp.count) return null;
-            const id = it.count;
-            it.count += 1;
-            const c_ptr: *Job = @ptrCast(&it.resp.items.?[id]);
-            return c_ptr;
-        }
-
-        pub fn reset(it: *Iterator) void {
-            it.count = 0;
-        }
-    };
-
-    pub fn iter(self: *Self) Iterator {
-        return Iterator{
-            .resp = self,
-            .count = 0,
-        };
-    }
-
-    pub fn slice_raw(self: *Self) []Job {
-        if (self.count == 0) return &.{};
-        return self.items.?[0..self.count];
-    }
-};
-
-pub fn loadAll() SlurmError!InfoResponse {
-    var data: *ResponseMessage = undefined;
-    try err.checkRpc(
-        c.slurm_load_jobs(0, @ptrCast(&data), c.SHOW_DETAIL | c.SHOW_ALL),
-    );
-
-    return InfoResponse{
-        .msg = data,
-        .count = data.record_count,
-        .items = @ptrCast(data.job_array),
-    };
+extern fn slurm_load_jobs(update_time: time_t, job_info_msg_pptr: ?**Job.LoadResponse, show_flags: u16) c_int;
+pub fn loadAll() SlurmError!*Job.LoadResponse {
+    var data: *Job.LoadResponse = undefined;
+    try err.checkRpc(slurm_load_jobs(0, &data, c.SHOW_DETAIL | c.SHOW_ALL));
+    return data;
 }
 
-pub fn loadOne(id: JobId) SlurmError!InfoResponse {
-    var data: *ResponseMessage = undefined;
-    try err.checkRpc(
-        c.slurm_load_job(@ptrCast(&data), id, c.SHOW_DETAIL),
-    );
-    return InfoResponse{
-        .msg = data,
-        .count = data.record_count,
-        .items = @ptrCast(data.job_array),
-    };
+extern fn slurm_load_job(resp: ?**Job.LoadResponse, job_id: u32, show_flags: u16) c_int;
+pub fn loadOne(id: JobId) SlurmError!*Job {
+    var data: *Job.LoadResponse = undefined;
+    defer data.deinit();
+    try err.checkRpc(slurm_load_job(&data, id, c.SHOW_DETAIL));
+
+    if (data.count != 1) return error.InvalidJobId;
+
+    // This makes the deinit() above viable, because the deinit function will
+    // think there are no Job records to free, since we extracted it here.
+    data.count = 0;
+    return &data.items.?[0];
 }
 
 test "parse_dependencies_from_string" {
