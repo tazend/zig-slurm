@@ -564,21 +564,21 @@ pub const Job = extern struct {
     extern fn slurm_get_job_stdout(buf: ?[*]u8, buf_size: c_int, job_ptr: *Job) void;
     pub fn getStdOut(self: *Job) [1024:0]u8 {
         var buf: [1024:0]u8 = std.mem.zeroes([1024:0]u8);
-        slurm_get_job_stdout(&buf, buf.len, @ptrCast(self));
+        slurm_get_job_stdout(&buf, buf.len, self);
         return buf;
     }
 
     extern fn slurm_get_job_stderr(buf: ?[*]u8, buf_size: c_int, job_ptr: *Job) void;
     pub fn getStdErr(self: *Job) [1024:0]u8 {
         var buf: [1024:0]u8 = std.mem.zeroes([1024:0]u8);
-        c.slurm_get_job_stderr(&buf, buf.len, @ptrCast(self));
+        slurm_get_job_stderr(&buf, buf.len, self);
         return buf;
     }
 
     extern fn slurm_get_job_stdin(buf: ?[*]u8, buf_size: c_int, job_ptr: *Job) void;
     pub fn getStdIn(self: *Job) [1024:0]u8 {
         var buf: [1024:0]u8 = std.mem.zeroes([1024:0]u8);
-        c.slurm_get_job_stdin(&buf, buf.len, @ptrCast(self));
+        slurm_get_job_stdin(&buf, buf.len, self);
         return buf;
     }
 
