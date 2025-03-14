@@ -134,6 +134,24 @@ pub const Node = extern struct {
         return Utilization.fromNode(self);
     }
 
+    pub fn allocTres(self: Node) common.TresString {
+        var alloc_tres: ?[*:0]u8 = null;
+        if (self.select_nodeinfo != null) {
+            _ = c.slurm_get_select_nodeinfo(
+                self.select_nodeinfo,
+                c.SELECT_NODEDATA_TRES_ALLOC_FMT_STR,
+                c.NODE_STATE_ALLOCATED,
+                @ptrCast(&alloc_tres),
+            );
+        }
+
+        return common.TresString.initCOwned(alloc_tres);
+    }
+
+    pub fn configuredTres(self: Node) common.TresString {
+        return common.TresString.initC(self.tres_fmt_str);
+    }
+
     pub fn allocCpus(self: Node) u16 {
         var alloc_cpus: u16 = 0;
         if (self.select_nodeinfo != null) {

@@ -1,4 +1,5 @@
 const std = @import("std");
+const slurm_allocator = @import("SlurmAllocator.zig").slurm_allocator;
 
 pub inline fn parseCStr(s: ?[*:0]u8) ?[]const u8 {
     if (s == null) return null;
@@ -50,3 +51,60 @@ pub fn BitflagMethods(comptime T: type, comptime E: type) type {
         }
     };
 }
+
+pub const TresString = struct {
+    str: []const u8,
+    delim1: u8 = ',',
+    delim2: u8 = '=',
+    _owned: bool = false,
+
+    pub fn iter(self: TresString) std.mem.SplitIterator(u8, .scalar) {
+        return std.mem.splitScalar(u8, self.str, self.delim1);
+    }
+
+    pub fn init(str: []const u8) TresString {
+        return .{
+            .str = str,
+        };
+    }
+
+    pub fn initC(str: ?[*:0]u8) TresString {
+        return .{
+            .str = parseCStr(str) orelse "",
+        };
+    }
+
+    //  pub fn initCAssumeNonNull(str: ?[*:0]u8) TresString {
+    //      return .{
+    //          .str = parseCStr(str).?,
+    //      };
+    //  }
+
+    pub fn initCOwned(str: ?[*:0]u8) TresString {
+        var tres = initC(str);
+        tres._owned = true;
+        return tres;
+    }
+
+    pub fn deinit(self: TresString) void {
+        if (self._owned) {
+            slurm_allocator.free(self.str);
+        }
+    }
+
+    pub fn isEmpty(self: TresString) bool {
+        return self.str.len == 0;
+    }
+
+    pub fn toHashMap(self: TresString, allocator: std.mem.Allocator) !std.StringHashMap([]const u8) {
+        var hashmap = std.StringHashMap([]const u8).init(allocator);
+        var it = self.iter();
+        while (it.next()) |item| {
+            var it2 = std.mem.splitScalar(u8, item, self.delim2);
+            const k = it2.first();
+            const v = it2.rest();
+            try hashmap.put(k, v);
+        }
+        return hashmap;
+    }
+};
