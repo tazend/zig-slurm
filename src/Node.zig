@@ -95,22 +95,6 @@ pub const Node = extern struct {
         name: ?[]const u8 = null,
     };
 
-    pub const UpdatableNew = struct {
-        comment: ?[*:0]const u8 = null,
-        cpu_bind: u32 = 0,
-        cert_token: ?[*:0]const u8 = null,
-        extra: ?[*:0]const u8 = null,
-        features: ?Features = null,
-        gres: ?[*:0]const u8 = null,
-        instance_id: CStr = null,
-        instance_type: CStr = null,
-        host: ?Host = null,
-        node_names: CStr = null,
-        state: u32 = c.NO_VAL,
-        reason: CStr = null,
-        reason_uid: u32 = 0,
-        resume_after: u32 = c.NO_VAL,
-        weight: u32 = c.NO_VAL,
     };
 
     pub const Utilization = struct {
