@@ -163,14 +163,6 @@ pub const Node = extern struct {
         }
     };
 
-    pub fn state(self: Node) State {
-        return .{
-            .base = @enumFromInt(self.node_state & c.NODE_STATE_BASE),
-            .flags = @bitCast(self.node_state & c.NODE_STATE_FLAGS),
-            .reason = common.parseCStr(self.reason),
-        };
-    }
-
     pub fn utilization(self: *Node) Utilization {
         return Utilization.fromNode(self);
     }
@@ -324,13 +316,19 @@ pub const Node = extern struct {
             .items = @ptrCast(node_resp.node_array),
         };
     }
+    pub const State = packed struct(u32) {
+        base: Base,
+        flags: Flags = .{},
+        _padding1: u4 = 0,
 
-    pub const State = struct {
-        base: State.Base,
-        flags: State.Flags,
-        reason: ?[]const u8,
+        pub const empty: State = .{ .base = .unknown };
+        pub const down: State = .{ .base = .down };
+        pub const idle: State = .{ .base = .idle };
+        pub const allocated: State = .{ .base = .allocated };
+        pub const mixed: State = .{ .base = .mixed };
+        pub const future: State = .{ .base = .future };
 
-        pub const Base = enum(u32) {
+        pub const Base = enum(u4) {
             unknown,
             down,
             idle,
@@ -338,16 +336,10 @@ pub const Node = extern struct {
             err,
             mixed,
             future,
-            _,
-
-            pub fn toInt(self: Base) u32 {
-                return @intFromEnum(self);
-            }
+            _end,
         };
 
-        pub const Flags = packed struct(u32) {
-            _padding1: u4 = 0,
-
+        pub const Flags = packed struct(u24) {
             network: bool = false,
             reservation: bool = false,
             undrain: bool = false,
@@ -372,19 +364,14 @@ pub const Node = extern struct {
             power_up: bool = false,
             power_drain: bool = false,
             dynamic_norm: bool = false,
+            blocked: bool = false,
 
-            _padding2: u5 = 0,
-
-            pub usingnamespace common.BitflagMethods(State.Flags, u32);
-
-            pub fn toInt(self: Flags) u32 {
-                return @bitCast(self);
-            }
+            pub usingnamespace common.BitflagMethods(State.Flags, u24);
         };
 
-        pub fn toStr(self: State, allocator: std.mem.Allocator) ![]const u8 {
-            var base_str: []const u8 = "invalid";
-            if (@intFromEnum(self.base) < c.NODE_STATE_END) {
+        pub fn toStr(self: State, allocator: std.mem.Allocator) ![:0]const u8 {
+            var base_str: [:0]const u8 = "invalid";
+            if (@intFromEnum(self.base) < @intFromEnum(State.Base._end)) {
                 base_str = @tagName(self.base);
             }
 
@@ -399,7 +386,7 @@ pub const Node = extern struct {
                 break :blk i;
             };
 
-            const slice = try allocator.alloc(u8, size);
+            const slice = try allocator.allocSentinel(u8, size, 0);
             @memcpy(slice[0..base_str.len], base_str);
 
             if (flag_str.len != 0) {
