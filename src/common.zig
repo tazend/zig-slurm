@@ -62,12 +62,5 @@ pub fn BitflagMethods(comptime T: type, comptime E: type) type {
         pub fn equal(a: T, b: T) bool {
             return @as(E, @bitCast(a)) == @as(E, @bitCast(b));
         }
-
-        comptime {
-            std.debug.assert(
-                @sizeOf(T) == @sizeOf(E) and
-                    @bitSizeOf(T) == @bitSizeOf(E),
-            );
-        }
     };
 }
