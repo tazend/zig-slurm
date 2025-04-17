@@ -678,6 +678,10 @@ pub const Job = extern struct {
     }
 
     pub fn requeueHold(self: Job) SlurmError!void {
+        const state: State = .{
+            .base = .pending,
+            .flags = .{ .requeue_hold = true },
+        };
         try err.checkRpc(cdef.slurm_requeue(self.job_id, state));
     }
 };
