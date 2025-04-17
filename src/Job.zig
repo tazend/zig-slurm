@@ -629,7 +629,7 @@ pub const Job = extern struct {
     }
 
     fn parseExitState(exit_code: u32) ExitState {
-        if (exit_code == c.NO_VAL) return ExitState{};
+        if (exit_code == NoValue.u32) return ExitState{};
 
         return if (std.posix.W.IFSIGNALED(exit_code))
             ExitState{ .code = 0, .signal = std.posix.W.TERMSIG(exit_code) }
