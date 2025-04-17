@@ -969,30 +969,6 @@ pub fn parseGresStr(gres: []const u8) !GresEntry {
     return entry;
 }
 
-pub const KeyValuePair = struct {
-    raw: []const u8,
-    delim1: u8,
-    delim2: u8,
-
-    const Self = @This();
-
-    pub fn iter(self: Self) std.mem.SplitIterator(u8, .scalar) {
-        return std.mem.splitScalar(u8, self.raw, self.delim1);
-    }
-
-    pub fn toHashMap(self: Self, allocator: std.mem.Allocator) !std.StringHashMap([]const u8) {
-        var hashmap = std.StringHashMap([]const u8).init(allocator);
-        var it = self.iter();
-        while (it.next()) |item| {
-            var it2 = std.mem.splitScalar(u8, item, self.delim2);
-            const k = it2.first();
-            const v = it2.rest();
-            try hashmap.put(k, v);
-        }
-        return hashmap;
-    }
-};
-
 extern fn slurm_load_jobs(update_time: time_t, job_info_msg_pptr: ?**Job.LoadResponse, show_flags: u16) c_int;
 pub fn loadAll() SlurmError!*Job.LoadResponse {
     var data: *Job.LoadResponse = undefined;
