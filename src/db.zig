@@ -126,6 +126,19 @@ pub const Transaction = extern struct {
     where_query: ?CStr = null,
 };
 
+pub const WCKeyFilter = extern struct {
+    cluster_list: ?*List(CStr) = null,
+    __format_list: ?*list_t = null,
+    id_list: ?*List(CStr) = null,
+    names: ?*List(CStr) = null,
+    only_defs: u16 = NoValue.u32,
+    usage_end: time_t = 0,
+    usage_start: time_t = 0,
+    user_list: ?*List(CStr) = null,
+    with_usage: u16 = NoValue.u16,
+    with_deleted: u16 = NoValue.u16,
+};
+
 pub const WCKey = extern struct {
     accounting_list: ?*list_t = null,
     cluster: ?CStr = null,
