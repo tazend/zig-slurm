@@ -65,6 +65,49 @@ pub const Node = extern struct {
     tres_fmt_str: ?CStr = null,
     version: ?CStr = null,
 
+    pub const LoadResponse = extern struct {
+        last_update: time_t,
+        count: u32,
+        items: ?[*]Node,
+
+        extern fn slurm_free_node_info_msg(node_buffer_ptr: ?*LoadResponse) void;
+        pub fn deinit(self: *LoadResponse) void {
+            slurm_free_node_info_msg(self);
+        }
+
+        pub const Iterator = struct {
+            data: *LoadResponse,
+            count: usize,
+
+            pub fn next(it: *Iterator) ?*Node {
+                const id = it.count;
+                defer it.count += 1;
+                return it.data.get_node_by_idx(id);
+            }
+
+            pub fn reset(it: *Iterator) void {
+                it.count = 0;
+            }
+        };
+
+        pub fn get_node_by_idx(self: *LoadResponse, idx: usize) ?*Node {
+            if (idx >= self.count) return null;
+            return &self.items.?[idx];
+        }
+
+        pub fn iter(self: *LoadResponse) Iterator {
+            return Iterator{
+                .data = self,
+                .count = 0,
+            };
+        }
+
+        pub fn asSlice(self: *LoadResponse) []Node {
+            if (self.count == 0) return &.{};
+            return self.items[0..self.count];
+        }
+    };
+
     pub const Updatable = extern struct {
         comment: ?CStr = null,
         cpu_bind: u32 = 0,
@@ -138,7 +181,7 @@ pub const Node = extern struct {
             self.idle_memory += other.idle_memory;
         }
 
-        pub fn fromNodes(node_resp: *InfoResponse) Utilization {
+        pub fn fromNodes(node_resp: *Node.LoadResponse) Utilization {
             var util = Utilization{};
 
             var node_iter = node_resp.iter();
@@ -149,7 +192,7 @@ pub const Node = extern struct {
             return util;
         }
 
-        pub fn groupByNode(node_resp: *InfoResponse, allocator: std.mem.Allocator) !std.StringHashMap(Utilization) {
+        pub fn groupByNode(node_resp: *Node.LoadResponse, allocator: std.mem.Allocator) !std.StringHashMap(Utilization) {
             var out = std.StringHashMap(Utilization).init(allocator);
 
             var node_iter = node_resp.iter();
@@ -223,51 +266,6 @@ pub const Node = extern struct {
     pub inline fn idleMemory(self: Node) u64 {
         return self.real_memory - self.allocMemory();
     }
-
-    pub const InfoResponse = struct {
-        msg: *ResponseMessage = undefined,
-        msg_part: *ResponseMessagePartition = undefined,
-        count: u32 = 0,
-        items: [*]Node,
-
-        pub fn deinit(self: InfoResponse) void {
-            c.slurm_free_node_info_msg(self.msg);
-            c.slurm_free_partition_info_msg(self.msg_part);
-        }
-
-        pub const Iterator = struct {
-            resp: *InfoResponse,
-            count: usize,
-
-            pub fn next(it: *Iterator) ?*Node {
-                const id = it.count;
-                defer it.count += 1;
-                return it.resp.get_node_by_idx(id);
-            }
-
-            pub fn reset(it: *Iterator) void {
-                it.count = 0;
-            }
-        };
-
-        pub fn get_node_by_idx(self: *InfoResponse, idx: usize) ?*Node {
-            if (idx >= self.count) return null;
-            const c_ptr: *Node = @ptrCast(&self.items[idx]);
-            return c_ptr;
-        }
-
-        pub fn iter(self: *InfoResponse) Iterator {
-            return Iterator{
-                .resp = self,
-                .count = 0,
-            };
-        }
-
-        pub fn toSlice(self: *InfoResponse) []Node {
-            if (self.count == 0) return &.{};
-            return self.items[0..self.count];
-        }
-    };
 
     pub fn delete(self: Node) !void {
         if (self.node_hostname) |name| {
