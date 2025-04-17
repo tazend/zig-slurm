@@ -1,4 +1,5 @@
 const std = @import("std");
+const slurm_allocator = @import("root.zig").slurm_allocator;
 
 pub const CStr = [*:0]const u8;
 pub const BitString = i64;
