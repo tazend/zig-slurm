@@ -576,6 +576,7 @@ pub const Job = extern struct {
             null;
     }
 
+    extern fn difftime(__time1: time_t, __time0: time_t) f64;
     pub fn runTime(self: Job) time_t {
         const job: Job = self;
         const status = self.state;
@@ -593,10 +594,10 @@ pub const Job = extern struct {
             } else etime = job.end_time;
 
             if (job.suspend_time > 0) {
-                rtime = @intFromFloat(c.difftime(etime, job.suspend_time));
+                rtime = @intFromFloat(difftime(etime, job.suspend_time));
                 rtime += job.pre_sus_time;
             } else {
-                rtime = @intFromFloat(c.difftime(etime, job.start_time));
+                rtime = @intFromFloat(difftime(etime, job.start_time));
             }
 
             break :blk rtime;
