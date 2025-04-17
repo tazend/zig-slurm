@@ -474,20 +474,6 @@ pub const Job = extern struct {
         };
     };
 
-    pub fn memoryPerCpu(self: *Job) ?u64 {
-        const mem = self.pn_min_memory;
-        if (mem != NoValue.u64 and (mem & c.MEM_PER_CPU) != 0) {
-            return mem & (~c.MEM_PER_CPU);
-        } else return null;
-    }
-
-    pub fn memoryPerNode(self: *Job) ?u64 {
-        const mem = self.pn_min_memory;
-        if (mem != NoValue.u64 and (mem & c.MEM_PER_CPU) == 0) {
-            return mem;
-        } else return null;
-    }
-
     pub const MemoryPerResource = union(enum) {
         cpu: u64,
         node: u64,
