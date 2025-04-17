@@ -175,6 +175,29 @@ pub const Node = extern struct {
         return Utilization.fromNode(self);
     }
 
+    pub fn allocTresMalloced(self: Node) ?CStr {
+        var alloc_tres: ?[:0]const u8 = null;
+        if (self.select_nodeinfo != null) {
+            _ = c.slurm_get_select_nodeinfo(
+                self.select_nodeinfo,
+                .tres_alloc_fmt_string,
+                .allocated,
+                &alloc_tres,
+            );
+        }
+        if (alloc_tres) |a| return a.ptr else return null;
+    }
+
+    pub fn allocTres(self: Node, allocator: std.mem.Allocator) !?[:0]const u8 {
+        const alloc_tres_malloced = self.allocTresMalloced();
+
+        if (alloc_tres_malloced) |tres_malloc| {
+            const tmp: []const u8 = std.mem.span(tres_malloc);
+            defer slurm.slurm_allocator.free(tmp);
+            return try allocator.dupeZ(u8, tmp);
+        } else return null;
+    }
+
     pub fn allocCpus(self: Node) u16 {
         var alloc_cpus: u16 = 0;
         if (self.select_nodeinfo != null) {
