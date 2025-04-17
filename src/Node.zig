@@ -118,10 +118,10 @@ pub const Node = extern struct {
         effective_cpus: u16 = 0,
         total_cpus: u16 = 0,
         idle_cpus: u16 = 0,
-        real_memory: u64 = 0,
-        free_memory: u64 = 0,
-        idle_memory: u64 = 0,
-        alloc_memory: u64 = 0,
+        real_memory: u128 = 0,
+        free_memory: u128 = 0,
+        idle_memory: u128 = 0,
+        alloc_memory: u128 = 0,
 
         fn fromNode(node: *Node) Utilization {
             var util = Utilization{};
