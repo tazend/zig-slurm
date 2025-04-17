@@ -95,6 +95,12 @@ pub const Node = extern struct {
         name: ?[]const u8 = null,
     };
 
+    pub const SelectDataType = enum(c_uint) {
+        subcount = 2,
+        ptr = 5,
+        mem_alloc = 8,
+        tres_alloc_fmt_string = 9,
+        tres_alloc_weighted = 10,
     };
 
     pub const Utilization = struct {
@@ -174,8 +180,8 @@ pub const Node = extern struct {
         if (self.select_nodeinfo != null) {
             _ = c.slurm_get_select_nodeinfo(
                 self.select_nodeinfo,
-                c.SELECT_NODEDATA_SUBCNT,
-                c.NODE_STATE_ALLOCATED,
+                .subcount,
+                .allocated,
                 &alloc_cpus,
             );
         }
@@ -187,8 +193,8 @@ pub const Node = extern struct {
         if (self.select_nodeinfo != null) {
             _ = c.slurm_get_select_nodeinfo(
                 self.select_nodeinfo,
-                c.SELECT_NODEDATA_MEM_ALLOC,
-                c.NODE_STATE_ALLOCATED,
+                .mem_alloc,
+                .allocated,
                 &alloc_memory,
             );
         }
