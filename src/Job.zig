@@ -199,7 +199,9 @@ pub const Job = extern struct {
 
     pub const State = packed struct(u32) {
         base: Base,
-        flags: Flags,
+        flags: Flags = .{},
+
+        pub const empty: State = .{ .base = .pending };
 
         pub const Base = enum(u8) {
             pending,
