@@ -2,7 +2,6 @@ const std = @import("std");
 const Allocator = std.mem.Allocator;
 const SlurmAllocator = @import("SlurmAllocator.zig");
 const builtin = std.builtin;
-pub const c = @import("c.zig").c;
 
 pub const job = @import("Job.zig");
 pub const node = @import("Node.zig");
@@ -16,6 +15,7 @@ pub const uint = @import("uint.zig");
 pub const parseCStr = @import("common.zig").parseCStr;
 pub const parseCStrZ = @import("common.zig").parseCStrZ;
 pub const db = @import("db.zig");
+pub const c = @import("slurm-ext.zig");
 pub const tres = @import("tres.zig");
 pub const gres = @import("gres.zig");
 
