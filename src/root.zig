@@ -9,6 +9,8 @@ pub const uint = @import("uint.zig");
 pub const parseCStr = @import("common.zig").parseCStr;
 pub const parseCStrZ = @import("common.zig").parseCStrZ;
 pub const db = @import("db.zig");
+pub const tres = @import("tres.zig");
+pub const gres = @import("gres.zig");
 
 pub const slurm_allocator = SlurmAllocator.slurm_allocator;
 
