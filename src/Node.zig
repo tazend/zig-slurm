@@ -1,15 +1,14 @@
-const c = @import("c.zig").c;
 const std = @import("std");
 const err = @import("error.zig");
 const Error = @import("error.zig").Error;
 const time_t = std.posix.time_t;
 const common = @import("common.zig");
-const parseCStr = @import("common.zig").parseCStr;
-
-const CStr = ?[*:0]const u8;
-
-pub const ResponseMessage = c.node_info_msg_t;
-const ResponseMessagePartition = c.partition_info_msg_t;
+const parseCStr = common.parseCStr;
+const NoValue = common.NoValue;
+const Infinite = common.Infinite;
+const CStr = common.CStr;
+const slurm = @import("root.zig");
+const c = slurm.c;
 
 pub const Node = extern struct {
     arch: ?[*:0]u8 = null,
