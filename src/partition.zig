@@ -9,6 +9,7 @@ const Infinite = common.Infinite;
 const CStr = common.CStr;
 const BitString = common.BitString;
 const List = @import("db.zig").List;
+const slurm = @import("root.zig");
 
 pub const JobDefaults = extern struct {
     type: u16 = 0,
@@ -72,12 +73,3 @@ pub const Partition = extern struct {
 
     pub const Updatable = Partition;
 };
-
-extern fn slurm_load_partitions(update_time: time_t, part_buffer_ptr: ?**Partition.LoadResponse, show_flags: u16) c_int;
-pub fn loadAll() Error!*Partition.LoadResponse {
-    var data: *Partition.LoadResponse = undefined;
-    const flags = c.SHOW_DETAIL | c.SHOW_ALL;
-    try err.checkRpc(slurm_load_partitions(0, &data, flags));
-
-    return data;
-}

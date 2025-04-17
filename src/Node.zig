@@ -269,51 +269,17 @@ pub const Node = extern struct {
 
     pub fn delete(self: Node) !void {
         if (self.node_hostname) |name| {
-            try deleteByName(std.mem.span(name));
+            try slurm.deleteNodesByName(std.mem.span(name));
         }
-    }
-
-    pub fn deleteByName(name: [:0]const u8) !void {
-        const names = Updatable{ .node_names = name };
-        try err.checkRpc(
-            c.slurm_delete_node(@constCast(@ptrCast(@alignCast(&names)))),
-        );
     }
 
     pub fn update(self: Node, changes: *Updatable) !void {
         if (self.name) |name| {
             changes.node_names = std.mem.span(name);
-            try updateC(changes.*);
+            try slurm.updateNodes(changes.*);
         }
     }
 
-    pub fn updateC(changes: Updatable) !void {
-        try err.checkRpc(
-            c.slurm_update_node(@constCast(@ptrCast(@alignCast(&changes)))),
-        );
-    }
-
-    pub fn loadAll() Error!InfoResponse {
-        const flags = c.SHOW_DETAIL | c.SHOW_ALL;
-
-        var node_resp: *ResponseMessage = undefined;
-        try err.checkRpc(
-            c.slurm_load_node(0, @ptrCast(&node_resp), flags),
-        );
-
-        var part_resp: *ResponseMessagePartition = undefined;
-        try err.checkRpc(
-            c.slurm_load_partitions(0, @ptrCast(&part_resp), flags),
-        );
-        c.slurm_populate_node_partitions(node_resp, part_resp);
-
-        return InfoResponse{
-            .msg = node_resp,
-            .msg_part = part_resp,
-            .count = node_resp.record_count,
-            .items = @ptrCast(node_resp.node_array),
-        };
-    }
     pub const State = packed struct(u32) {
         base: Base,
         flags: Flags = .{},

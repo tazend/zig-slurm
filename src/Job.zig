@@ -969,27 +969,6 @@ pub fn parseGresStr(gres: []const u8) !GresEntry {
     return entry;
 }
 
-extern fn slurm_load_jobs(update_time: time_t, job_info_msg_pptr: ?**Job.LoadResponse, show_flags: u16) c_int;
-pub fn loadAll() SlurmError!*Job.LoadResponse {
-    var data: *Job.LoadResponse = undefined;
-    try err.checkRpc(slurm_load_jobs(0, &data, c.SHOW_DETAIL | c.SHOW_ALL));
-    return data;
-}
-
-extern fn slurm_load_job(resp: ?**Job.LoadResponse, job_id: u32, show_flags: u16) c_int;
-pub fn loadOne(id: JobId) SlurmError!*Job {
-    var data: *Job.LoadResponse = undefined;
-    defer data.deinit();
-    try err.checkRpc(slurm_load_job(&data, id, c.SHOW_DETAIL));
-
-    if (data.count != 1) return error.InvalidJobId;
-
-    // This makes the deinit() above viable, because the deinit function will
-    // think there are no Job records to free, since we extracted it here.
-    data.count = 0;
-    return &data.items.?[0];
-}
-
 test "parse_dependencies_from_string" {
     const dep_str1 = "afterany:541(unfulfilled),afterany:542(unfulfilled),afterok:541(unfulfilled),aftercorr:510(failed)";
     const dep1 = try parseDepStr(dep_str1, std.testing.allocator);
