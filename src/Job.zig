@@ -11,6 +11,7 @@ const NoValue = common.NoValue;
 const Infinite = common.Infinite;
 const CStr = common.CStr;
 const BitString = common.BitString;
+const cdef = @import("slurm-ext.zig");
 
 pub const JobId = u32;
 
@@ -486,10 +487,10 @@ pub const Job = extern struct {
         const mem_tres = self.mem_per_tres;
 
         if (mem != NoValue.u64) {
-            return if ((mem & c.MEM_PER_CPU) == 0)
+            return if ((mem & cdef.MEM_PER_CPU) == 0)
                 .{ .node = mem }
             else
-                .{ .cpu = mem & (~c.MEM_PER_CPU) };
+                .{ .cpu = mem & (~cdef.MEM_PER_CPU) };
         } else if (mem_tres) |v| {
             // TODO: TRES Parser
             _ = v;
@@ -654,11 +655,11 @@ pub const Job = extern struct {
     }
 
     pub fn @"suspend"(self: Job) SlurmError!void {
-        try err.checkRpc(c.slurm_suspend(self.job_id));
+        try err.checkRpc(cdef.slurm_suspend(self.job_id));
     }
 
     pub fn unsuspend(self: Job) SlurmError!void {
-        try err.checkRpc(c.slurm_resume(self.job_id));
+        try err.checkRpc(cdef.slurm_resume(self.job_id));
     }
 
     pub fn hold(self: Job, mode: HoldMode) void {
@@ -671,11 +672,11 @@ pub const Job = extern struct {
     }
 
     pub fn requeuex(self: Job) SlurmError!void {
-        try err.checkRpc(c.slurm_requeue(self.job_id, 0));
+        try err.checkRpc(cdef.slurm_requeue(self.job_id, .empty));
     }
 
     pub fn requeueHold(self: Job) SlurmError!void {
-        try err.checkRpc(c.slurm_requeue(self.job_id, c.JOB_REQUEUE_HOLD));
+        try err.checkRpc(cdef.slurm_requeue(self.job_id, state));
     }
 };
 
