@@ -1,7 +1,8 @@
 const c = @import("c.zig").c;
 const std = @import("std");
 
-pub extern fn slurm_strerror(errnum: c_int) ?[*:0]u8;
+// This always returns a valid string.
+pub extern fn slurm_strerror(errnum: c_int) [*:0]const u8;
 
 pub const ErrorBundle = struct {
     code: Error,
