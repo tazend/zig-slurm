@@ -16,12 +16,12 @@ pub const Infinite = struct {
     pub const @"u64": u64 = (1 << 64) - 1;
 };
 
-pub fn parseCStr(s: ?[*:0]u8) ?[]const u8 {
+pub fn parseCStr(s: ?CStr) ?[]const u8 {
     if (s == null) return null;
     return std.mem.span(s);
 }
 
-pub fn parseCStrZ(s: ?[*:0]u8) ?[:0]const u8 {
+pub fn parseCStrZ(s: ?CStr) ?[:0]const u8 {
     if (s == null) return null;
     return std.mem.span(s);
 }
