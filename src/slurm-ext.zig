@@ -2,6 +2,10 @@ const slurm = @import("root.zig");
 const std = @import("std");
 const time_t = std.posix.time_t;
 const common = @import("common.zig");
+const db = @import("db.zig");
+const List = db.List;
+
+pub const sluid_t = u64;
 
 pub const MEM_PER_CPU = @import("std").zig.c_translation.promoteIntLiteral(c_int, 0x8000000000000000, .hex);
 
@@ -18,6 +22,18 @@ pub const AccountingGatherEnergy = extern struct {
     previous_consumed_energy: u64,
     poll_time: time_t,
     slurmd_start_time: time_t,
+};
+
+pub const TresType = enum(c_int) {
+    cpu = 1,
+    mem,
+    energy,
+    node,
+    billing,
+    fs_disk,
+    vmem,
+    pages,
+    static_count,
 };
 
 pub extern fn slurm_init(conf: ?common.CStr) void;
@@ -50,7 +66,7 @@ pub extern fn slurm_populate_node_partitions(
     part_buffer_ptr: ?*slurm.Partition.LoadResponse,
 ) void;
 
-extern fn slurm_load_jobs(
+pub extern fn slurm_load_jobs(
     update_time: time_t,
     job_info_msg_pptr: ?**slurm.Job.LoadResponse,
     show_flags: slurm.ShowFlags,
@@ -68,3 +84,11 @@ pub extern fn slurm_kill_job(job_id: u32, signal: u16, flags: u16) c_int;
 
 // TODO: Perhaps better handling for the requeue flags.
 pub extern fn slurm_requeue(job_id: u32, flags: slurm.Job.State) c_int;
+
+pub extern fn slurm_get_job_steps(
+    update_time: time_t,
+    job_id: u32,
+    step_id: u32,
+    step_response_pptr: ?**slurm.Step.LoadResponse,
+    show_flags: slurm.ShowFlags,
+) c_int;

@@ -12,6 +12,9 @@ const Infinite = common.Infinite;
 const CStr = common.CStr;
 const BitString = common.BitString;
 const cdef = @import("slurm-ext.zig");
+const db = @import("db.zig");
+const slurm = @import("root.zig");
+const Allocator = std.mem.Allocator;
 
 pub const JobId = u32;
 
@@ -195,6 +198,19 @@ pub const Job = extern struct {
                 .count = 0,
             };
         }
+    };
+
+    pub const Statistics = struct {
+        total_cpu_time: u64 = 0,
+        user_cpu_time: u64 = 0,
+        system_cpu_time: u64 = 0,
+        elapsed_cpu_time: u64 = 0,
+        consumed_energy: u64 = 0,
+        disk_read: u64 = 0,
+        disk_write: u64 = 0,
+        page_faults: u64 = 0,
+        resident_memory: u64 = 0,
+        virtual_memory: u64 = 0,
     };
 
     pub const State = packed struct(u32) {
@@ -648,13 +664,17 @@ pub const Job = extern struct {
         return parseExitState(self.derived_ec);
     }
 
-    pub fn sendSignal(self: Job, signal: u16, flags: u16) SlurmError!void {
-        try err.checkRpc(c.slurm_kill_job(self.job_id, signal, flags));
-    }
+    //  pub fn sendSignal(self: Job, signal: u16, flags: u16) SlurmError!void {
+    //      try err.checkRpc(c.slurm_kill_job(self.job_id, signal, flags));
+    //  }
 
     pub fn cancel(self: Job) SlurmError!void {
         try self.sendSignal(9, 0);
     }
+
+    //  pub fn loadSteps(self: Job) SlurmError!*Step.LoadResponse {
+    //      return try slurm.loadStepsForJob(self.job_id);
+    //  }
 
     pub fn @"suspend"(self: Job) SlurmError!void {
         try err.checkRpc(cdef.slurm_suspend(self.job_id));

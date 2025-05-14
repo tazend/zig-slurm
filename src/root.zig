@@ -5,9 +5,11 @@ const builtin = std.builtin;
 
 pub const job = @import("Job.zig");
 pub const node = @import("Node.zig");
+pub const step = @import("step.zig");
 pub const partition = @import("partition.zig");
 
 pub const Job = job.Job;
+pub const Step = step.Step;
 pub const Node = node.Node;
 pub const Partition = partition.Partition;
 
@@ -20,6 +22,8 @@ pub const Error = err.Error;
 pub const c = @import("slurm-ext.zig");
 pub const tres = @import("tres.zig");
 pub const gres = @import("gres.zig");
+pub const common = @import("common.zig");
+const time_t = std.os.linux.time_t;
 
 pub const slurm_allocator = SlurmAllocator.slurm_allocator;
 
