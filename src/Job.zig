@@ -1,5 +1,3 @@
-const c = @import("c.zig").c;
-const cx = @import("c.zig");
 const std = @import("std");
 const err = @import("error.zig");
 const SlurmError = @import("error.zig").Error;
@@ -15,6 +13,7 @@ const cdef = @import("slurm-ext.zig");
 const db = @import("db.zig");
 const slurm = @import("root.zig");
 const Allocator = std.mem.Allocator;
+const slurmctld = @import("slurmctld.zig");
 
 pub const JobId = u32;
 
@@ -531,22 +530,22 @@ pub const Job = extern struct {
     }
 
     pub fn getBatchScript(self: Job, allocator: std.mem.Allocator) ![:0]const u8 {
-        var msg: cx.job_id_msg_t = .{ .job_id = self.job_id };
-        var req: cx.slurm_msg_t = undefined;
-        var resp: cx.slurm_msg_t = undefined;
-        cx.slurm_msg_t_init(&req);
-        cx.slurm_msg_t_init(&resp);
+        var msg: slurmctld.job_id_msg_t = .{ .job_id = self.job_id };
+        var req: slurmctld.slurm_msg_t = undefined;
+        var resp: slurmctld.slurm_msg_t = undefined;
+        slurmctld.slurm_msg_t_init(&req);
+        slurmctld.slurm_msg_t_init(&resp);
 
-        req.msg_type = cx.slurm_msg_type_t.request_batch_script;
+        req.msg_type = slurmctld.slurm_msg_type_t.request_batch_script;
         req.data = &msg;
 
-        try err.checkRpc(cx.slurm_send_recv_controller_msg(
+        try err.checkRpc(slurmctld.slurm_send_recv_controller_msg(
             &req,
             &resp,
-            c.working_cluster_rec,
+            db.working_cluster_rec,
         ));
 
-        if (resp.msg_type == cx.slurm_msg_type_t.response_batch_script) {
+        if (resp.msg_type == slurmctld.slurm_msg_type_t.response_batch_script) {
             const data: ?[*:0]const u8 = @ptrCast(resp.data);
             if (data) |d| {
                 const tmp: []const u8 = std.mem.span(d);
@@ -554,11 +553,11 @@ pub const Job = extern struct {
                 slurm_allocator.free(tmp);
                 return script;
             } else return error.Generic;
-        } else if (resp.msg_type == cx.slurm_msg_type_t.response_slurm_rc) {
-            const data: ?*cx.return_code_msg_t = @alignCast(@ptrCast(resp.data));
+        } else if (resp.msg_type == slurmctld.slurm_msg_type_t.response_slurm_rc) {
+            const data: ?*slurmctld.return_code_msg_t = @alignCast(@ptrCast(resp.data));
             if (data) |d| { // TODO: properly handle this error
                 _ = d.return_code;
-                cx.slurm_free_return_code_msg(d);
+                slurmctld.slurm_free_return_code_msg(d);
             }
             return error.Generic;
         } else {

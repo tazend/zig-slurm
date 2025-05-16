@@ -1,9 +1,12 @@
 const std = @import("std");
 const assert = std.debug.assert;
 const Allocator = std.mem.Allocator;
-const slurm_xcalloc = @import("c.zig").slurm_xcalloc;
-const slurm_xfree = @import("c.zig").slurm_xfree;
-const slurm_xrecalloc = @import("c.zig").slurm_xrecalloc;
+pub extern fn slurm_xcalloc(usize, usize, bool, bool, [*c]const u8, c_int, [*c]const u8) ?*anyopaque;
+pub extern fn slurm_xfree([*c]?*anyopaque) void;
+pub extern fn slurm_xfree_array([*c][*c]?*anyopaque) void;
+pub extern fn slurm_xrecalloc([*c]?*anyopaque, usize, usize, bool, bool, [*c]const u8, c_int, [*c]const u8) ?*anyopaque;
+pub extern fn slurm_xsize(item: ?*anyopaque) usize;
+pub extern fn slurm_xfree_ptr(?*anyopaque) void;
 
 pub fn alloc(
     context: *anyopaque,

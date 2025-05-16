@@ -1,32 +1,19 @@
-const c = @import("c.zig").c;
 const std = @import("std");
-const SlurmError = @import("error.zig").Error;
-const ListDestroyFunction = *const fn (object: ?*anyopaque) callconv(.C) void;
 const common = @import("common.zig");
+const cdef = @import("slurm-ext.zig");
+const SlurmError = @import("error.zig").Error;
 const checkRpc = @import("error.zig").checkRpc;
 const time_t = std.os.linux.time_t;
-const CStr = [*:0]const u8;
-const list_t = opaque {};
-const list_itr_t = opaque {};
-const cdef = @import("slurm-ext.zig");
+const CStr = common.CStr;
 const JobState = @import("Job.zig").Job.State;
 const BitString = common.BitString;
 const StepID = @import("step.zig").Step.ID;
+const xfree_ptr = @import("SlurmAllocator.zig").slurm_xfree_ptr;
+const slurm_addr_t = @import("slurmctld.zig").slurm_addr_t;
+const NoValue = common.NoValue;
+const Infinite = common.Infinite;
 
-const NoValue = struct {
-    pub const @"u8": u8 = c.NO_VAL8;
-    pub const @"u16": u16 = c.NO_VAL16;
-    pub const @"u32": u32 = c.NO_VAL;
-    pub const @"u64": u64 = c.NO_VAL64;
-};
-
-const Infinite = struct {
-    pub const @"u8": u8 = c.INFINITE8;
-    pub const @"u16": u16 = c.INFINITE16;
-    pub const @"u32": u32 = c.INFINITE;
-    pub const @"u64": u64 = c.INFINITE64;
-};
-
+pub extern var working_cluster_rec: *Cluster;
 pub extern var assoc_mgr_tres_list: ?*List(*TrackableResource);
 
 pub const Connection = opaque {
@@ -185,7 +172,7 @@ pub const TransactionFilter = extern struct {
     actions: ?*List(CStr) = null,
     actors: ?*List(CStr) = null,
     clusters: ?*List(CStr) = null,
-    __format_list: ?*list_t = null,
+    __format_list: ?*List(*opaque {}) = null,
     ids: ?*List(CStr) = null,
     infos: ?*List(CStr) = null,
     names: ?*List(CStr) = null,
@@ -209,7 +196,7 @@ pub const Transaction = extern struct {
 
 pub const WCKeyFilter = extern struct {
     cluster_list: ?*List(CStr) = null,
-    __format_list: ?*list_t = null,
+    __format_list: ?*List(*opaque {}) = null,
     id_list: ?*List(CStr) = null,
     names: ?*List(CStr) = null,
     only_defs: u16 = NoValue.u32,
@@ -221,7 +208,7 @@ pub const WCKeyFilter = extern struct {
 };
 
 pub const WCKey = extern struct {
-    accounting_list: ?*list_t = null,
+    accounting_list: ?*List(*opaque {}) = null,
     cluster: ?CStr = null,
     flags: u32 = 0,
     id: u32 = NoValue.u32,
@@ -248,7 +235,7 @@ pub const JobFilter = extern struct {
     db_flags: u32 = NoValue.u32,
     exitcode: i32 = 0,
     flags: JobFilterFlags = .{ .no_truncate = true },
-    __format_list: ?*list_t = null,
+    __format_list: ?*List(*opaque {}) = null,
     group_ids: ?*List(CStr) = null,
     names: ?*List(CStr) = null,
     nodes_max: u32 = 0,
@@ -257,7 +244,7 @@ pub const JobFilter = extern struct {
     qos_ids: ?*List(CStr) = null,
     reasons: ?*List(CStr) = null,
     reservations: ?*List(CStr) = null,
-    __resvid_list: ?*list_t = null,
+    __resvid_list: ?*List(*opaque {}) = null,
     states: ?*List(CStr) = null,
     steps: ?*List(*SelectedStep) = null,
     timelimit_max: u32 = 0,
@@ -294,7 +281,7 @@ pub const AccountFilter = extern struct {
 
 pub const Account = extern struct {
     associations: ?*List(*Association) = null,
-    coordinators: ?*list_t = null,
+    coordinators: ?*List(*opaque {}) = null,
     description: ?CStr = null,
     flags: AccountFlags = .none,
     name: ?CStr = null,
@@ -326,7 +313,7 @@ pub const User = extern struct {
     admin_level: AdminLevel = AdminLevel.not_set,
     associations: ?*List(*Association) = null,
     bf_usage: ?*BFUsage = null,
-    coordinators: ?*c.list_t = null,
+    coordinators: ?*List(*opaque {}) = null,
     default_account: ?CStr = null,
     default_wckey: ?CStr = null,
     flags: u32 = 0,
@@ -352,6 +339,31 @@ pub const AssociationFilter = extern struct {
     usage_end: time_t = 0,
     usage_start: time_t = 0,
     users: ?*List(CStr) = null,
+};
+
+pub const AssociationUsage = extern struct {
+    accrue_cnt: u32 = @import("std").mem.zeroes(u32),
+    children_list: ?*List(*opaque {}) = null,
+    grp_node_bitmap: ?[*]BitString = null,
+    grp_node_job_cnt: [*c]u16 = @import("std").mem.zeroes([*c]u16),
+    grp_used_tres: [*c]u64 = @import("std").mem.zeroes([*c]u64),
+    grp_used_tres_run_secs: [*c]u64 = @import("std").mem.zeroes([*c]u64),
+    grp_used_wall: f64 = @import("std").mem.zeroes(f64),
+    fs_factor: f64 = @import("std").mem.zeroes(f64),
+    level_shares: u32 = @import("std").mem.zeroes(u32),
+    parent_assoc_ptr: ?*Association = null,
+    priority_norm: f64 = @import("std").mem.zeroes(f64),
+    fs_assoc_ptr: ?*Association = null,
+    shares_norm: f64 = @import("std").mem.zeroes(f64),
+    tres_cnt: u32 = @import("std").mem.zeroes(u32),
+    usage_efctv: c_longdouble = @import("std").mem.zeroes(c_longdouble),
+    usage_norm: c_longdouble = @import("std").mem.zeroes(c_longdouble),
+    usage_raw: c_longdouble = @import("std").mem.zeroes(c_longdouble),
+    usage_tres_raw: [*c]c_longdouble = @import("std").mem.zeroes([*c]c_longdouble),
+    used_jobs: u32 = @import("std").mem.zeroes(u32),
+    used_submit_jobs: u32 = @import("std").mem.zeroes(u32),
+    level_fs: c_longdouble = @import("std").mem.zeroes(c_longdouble),
+    valid_qos: ?[*]BitString = null,
 };
 
 pub const Step = extern struct {
@@ -407,7 +419,7 @@ pub const StepStats = extern struct {
 };
 
 pub const Association = extern struct {
-    __accounting_list: ?*list_t = null,
+    __accounting_list: ?*List(*opaque {}) = null,
     account: ?CStr = null,
     __assoc_next: ?*Association = null,
     __assoc_next_id: ?*Association = null,
@@ -416,24 +428,24 @@ pub const Association = extern struct {
     comment: ?CStr = null,
     default_qos_id: u32 = 0,
     flags: AssociationFlags = .none,
-    grp_jobs: u32 = c.NO_VAL,
-    grp_jobs_accrue: u32 = c.NO_VAL,
-    grp_submit_jobs: u32 = c.NO_VAL,
+    grp_jobs: u32 = NoValue.u32,
+    grp_jobs_accrue: u32 = NoValue.u32,
+    grp_submit_jobs: u32 = NoValue.u32,
     grp_tres: ?CStr = null,
     __grp_tres_ctld: ?*u64 = null,
     grp_tres_mins: ?CStr = null,
     __grp_tres_mins_ctld: ?*u64 = null,
     grp_tres_run_mins: ?CStr = null,
     __grp_tres_run_mins_ctld: ?*u64 = null,
-    grp_wall: u32 = c.NO_VAL,
-    id: u32 = c.NO_VAL,
-    is_def: u16 = c.NO_VAL16,
-    __leaf_usage: ?*c.slurmdb_assoc_usage_t = null,
-    lft: u32 = c.NO_VAL,
+    grp_wall: u32 = NoValue.u32,
+    id: u32 = NoValue.u32,
+    is_def: u16 = NoValue.u16,
+    __leaf_usage: ?*AssociationUsage = null,
+    lft: u32 = NoValue.u32,
     lineage: ?CStr = null,
-    max_jobs: u32 = c.NO_VAL,
-    max_jobs_accrue: u32 = c.NO_VAL,
-    max_submit_jobs: u32 = c.NO_VAL,
+    max_jobs: u32 = NoValue.u32,
+    max_jobs_accrue: u32 = NoValue.u32,
+    max_submit_jobs: u32 = NoValue.u32,
     max_tres_mins_pj: ?CStr = null,
     __max_tres_mins_ctld: ?*u64 = null,
     max_tres_run_mins: ?CStr = null,
@@ -442,41 +454,127 @@ pub const Association = extern struct {
     __max_tres_ctld: ?*u64 = null,
     max_tres_pn: ?CStr = null,
     __max_tres_pn_ctld: ?*u64 = null,
-    max_wall_pj: u32 = c.NO_VAL,
-    min_prio_thresh: u32 = c.NO_VAL,
+    max_wall_pj: u32 = NoValue.u32,
+    min_prio_thresh: u32 = NoValue.u32,
     parent_acct: ?CStr = null,
-    parent_id: u32 = c.NO_VAL,
+    parent_id: u32 = NoValue.u32,
     partition: ?CStr = null,
-    priority: u32 = c.NO_VAL,
-    qos_list: ?*list_t = null,
-    rgt: u32 = c.NO_VAL,
-    shares_raw: u32 = c.NO_VAL,
-    uid: u32 = c.NO_VAL,
-    usage: ?*c.slurmdb_assoc_usage_t = null,
+    priority: u32 = NoValue.u32,
+    qos_list: ?*List(*opaque {}) = null,
+    rgt: u32 = NoValue.u32,
+    shares_raw: u32 = NoValue.u32,
+    uid: u32 = NoValue.u32,
+    usage: ?*AssociationUsage = null,
     user: ?CStr = null,
     __user_rec: ?*User = null,
 
     pub const get = loadAssociations;
 };
 
-pub extern fn slurm_xcalloc(usize, usize, bool, bool, [*c]const u8, c_int, [*c]const u8) ?*anyopaque;
-pub extern fn slurm_xfree([*c]?*anyopaque) void;
-pub extern fn slurm_xfree_array([*c][*c]?*anyopaque) void;
-pub extern fn slurm_xrecalloc([*c]?*anyopaque, usize, usize, bool, bool, [*c]const u8, c_int, [*c]const u8) ?*anyopaque;
-pub extern fn slurm_xsize(item: ?*anyopaque) usize;
-pub extern fn slurm_xfree_ptr(?*anyopaque) void;
+pub const ClusterFederation = extern struct {
+    feature_list: ?*List(*opaque {}) = null,
+    id: u32 = @import("std").mem.zeroes(u32),
+    name: [*c]u8 = @import("std").mem.zeroes([*c]u8),
+    recv: ?*anyopaque = @import("std").mem.zeroes(?*anyopaque),
+    send: ?*anyopaque = @import("std").mem.zeroes(?*anyopaque),
+    state: u32 = @import("std").mem.zeroes(u32),
+    sync_recvd: bool = @import("std").mem.zeroes(bool),
+    sync_sent: bool = @import("std").mem.zeroes(bool),
+};
+
+pub const Cluster = extern struct {
+    accounting_list: ?*List(*opaque {}) = null,
+    classification: u16 = 0,
+    comm_fail_time: time_t = 0,
+    control_addr: slurm_addr_t,
+    control_host: [*c]u8 = @import("std").mem.zeroes([*c]u8),
+    control_port: u32 = @import("std").mem.zeroes(u32),
+    dimensions: u16 = @import("std").mem.zeroes(u16),
+    dim_size: [*c]c_int = @import("std").mem.zeroes([*c]c_int),
+    id: u16 = @import("std").mem.zeroes(u16),
+    fed: ClusterFederation = @import("std").mem.zeroes(ClusterFederation),
+    flags: u32 = @import("std").mem.zeroes(u32),
+    lock: std.c.pthread_mutex_t = @import("std").mem.zeroes(std.c.pthread_mutex_t),
+    name: [*c]u8 = @import("std").mem.zeroes([*c]u8),
+    nodes: [*c]u8 = @import("std").mem.zeroes([*c]u8),
+    root_assoc: ?*Association = null,
+    rpc_version: u16 = @import("std").mem.zeroes(u16),
+    send_rpc: ?*List(*opaque {}) = null,
+    tres_str: [*c]u8 = @import("std").mem.zeroes([*c]u8),
+};
 
 pub fn List(comptime T: type) type {
     return opaque {
         const Self = @This();
 
-        const DestroyFunc: ListDestroyFunction = switch (T) {
-            *User => c.slurmdb_destroy_user_rec,
-            *Association => c.slurmdb_destroy_assoc_rec,
-            else => slurm_xfree_ptr,
+        const DestroyFunctionSignature = *const fn (object: ?*anyopaque) callconv(.C) void;
+
+        pub extern fn slurmdb_destroy_assoc_usage(object: ?*anyopaque) void;
+        pub extern fn slurmdb_destroy_bf_usage(object: ?*anyopaque) void;
+        pub extern fn slurmdb_destroy_bf_usage_members(object: ?*anyopaque) void;
+        pub extern fn slurmdb_destroy_qos_usage(object: ?*anyopaque) void;
+        pub extern fn slurmdb_destroy_user_rec(object: ?*anyopaque) void;
+        pub extern fn slurmdb_destroy_account_rec(object: ?*anyopaque) void;
+        pub extern fn slurmdb_destroy_coord_rec(object: ?*anyopaque) void;
+        pub extern fn slurmdb_destroy_clus_res_rec(object: ?*anyopaque) void;
+        pub extern fn slurmdb_destroy_cluster_accounting_rec(object: ?*anyopaque) void;
+        pub extern fn slurmdb_destroy_cluster_rec(object: ?*anyopaque) void;
+        pub extern fn slurmdb_destroy_federation_rec(object: ?*anyopaque) void;
+        pub extern fn slurmdb_destroy_accounting_rec(object: ?*anyopaque) void;
+        pub extern fn slurmdb_destroy_assoc_rec(object: ?*anyopaque) void;
+        pub extern fn slurmdb_destroy_event_rec(object: ?*anyopaque) void;
+        pub extern fn slurmdb_destroy_instance_rec(object: ?*anyopaque) void;
+        pub extern fn slurmdb_destroy_job_rec(object: ?*anyopaque) void;
+        pub extern fn slurmdb_destroy_qos_rec(object: ?*anyopaque) void;
+        pub extern fn slurmdb_destroy_reservation_rec(object: ?*anyopaque) void;
+        pub extern fn slurmdb_destroy_step_rec(object: ?*anyopaque) void;
+        pub extern fn slurmdb_destroy_res_rec(object: ?*anyopaque) void;
+        pub extern fn slurmdb_destroy_txn_rec(object: ?*anyopaque) void;
+        pub extern fn slurmdb_destroy_wckey_rec(object: ?*anyopaque) void;
+        pub extern fn slurmdb_destroy_archive_rec(object: ?*anyopaque) void;
+        pub extern fn slurmdb_destroy_tres_rec_noalloc(object: ?*anyopaque) void;
+        pub extern fn slurmdb_destroy_tres_rec(object: ?*anyopaque) void;
+        pub extern fn slurmdb_destroy_report_assoc_rec(object: ?*anyopaque) void;
+        pub extern fn slurmdb_destroy_report_user_rec(object: ?*anyopaque) void;
+        pub extern fn slurmdb_destroy_report_cluster_rec(object: ?*anyopaque) void;
+        pub extern fn slurmdb_destroy_user_cond(object: ?*anyopaque) void;
+        pub extern fn slurmdb_destroy_account_cond(object: ?*anyopaque) void;
+        pub extern fn slurmdb_destroy_cluster_cond(object: ?*anyopaque) void;
+        pub extern fn slurmdb_destroy_federation_cond(object: ?*anyopaque) void;
+        pub extern fn slurmdb_destroy_tres_cond(object: ?*anyopaque) void;
+        pub extern fn slurmdb_destroy_assoc_cond(object: ?*anyopaque) void;
+        pub extern fn slurmdb_destroy_event_cond(object: ?*anyopaque) void;
+        pub extern fn slurmdb_destroy_instance_cond(object: ?*anyopaque) void;
+        pub extern fn slurmdb_destroy_job_cond(object: ?*anyopaque) void;
+        pub extern fn slurmdb_destroy_job_cond_members(job_cond: *JobFilterFlags) void;
+        pub extern fn slurmdb_destroy_qos_cond(object: ?*anyopaque) void;
+        pub extern fn slurmdb_destroy_reservation_cond(object: ?*anyopaque) void;
+        pub extern fn slurmdb_destroy_res_cond(object: ?*anyopaque) void;
+        pub extern fn slurmdb_destroy_txn_cond(object: ?*anyopaque) void;
+        pub extern fn slurmdb_destroy_wckey_cond(object: ?*anyopaque) void;
+        pub extern fn slurmdb_destroy_archive_cond(object: ?*anyopaque) void;
+        pub extern fn slurmdb_destroy_add_assoc_cond(object: ?*anyopaque) void;
+        pub extern fn slurmdb_destroy_update_object(object: ?*anyopaque) void;
+        pub extern fn slurmdb_destroy_used_limits(object: ?*anyopaque) void;
+        pub extern fn slurmdb_destroy_print_tree(object: ?*anyopaque) void;
+        pub extern fn slurmdb_destroy_hierarchical_rec(object: ?*anyopaque) void;
+        pub extern fn slurmdb_destroy_report_job_grouping(object: ?*anyopaque) void;
+        pub extern fn slurmdb_destroy_report_acct_grouping(object: ?*anyopaque) void;
+        pub extern fn slurmdb_destroy_report_cluster_grouping(object: ?*anyopaque) void;
+        pub extern fn slurmdb_destroy_rpc_obj(object: ?*anyopaque) void;
+        pub extern fn slurmdb_destroy_rollup_stats(object: ?*anyopaque) void;
+        pub extern fn slurmdb_destroy_stats_rec(object: ?*anyopaque) void;
+        pub extern fn slurmdb_destroy_slurmdb_stats(stats: *StepStats) void;
+
+        const DestroyFunction: DestroyFunctionSignature = switch (T) {
+            *User => slurmdb_destroy_user_rec,
+            *Association => slurmdb_destroy_assoc_rec,
+            CStr => xfree_ptr,
+            else => @compileError("List destruction not implemented for: " ++ @typeName(T)),
         };
 
         pub const Iterator = struct {
+            const list_itr_t = opaque {};
             c_handle: *list_itr_t,
             index: usize = 0,
 
@@ -508,9 +606,9 @@ pub fn List(comptime T: type) type {
             }
         };
 
-        extern fn slurm_list_create(f: ListDestroyFunction) ?*List(T);
+        extern fn slurm_list_create(f: DestroyFunctionSignature) ?*List(T);
         pub fn init() *List(T) {
-            const list = slurm_list_create(DestroyFunc);
+            const list = slurm_list_create(DestroyFunction);
             const list_typed = @as(*List(T), @ptrCast(list.?));
             return list_typed;
         }
