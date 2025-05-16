@@ -27,7 +27,7 @@ const Infinite = struct {
     pub const @"u64": u64 = c.INFINITE64;
 };
 
-pub extern var assoc_mgr_tres_list: ?*List(TrackableResource);
+pub extern var assoc_mgr_tres_list: ?*List(*TrackableResource);
 
 pub const Connection = opaque {
     extern fn slurmdb_connection_get(persist_conn_flags: *u16) ?*Connection;
@@ -138,7 +138,7 @@ pub const Job = extern struct {
     start: time_t = 0,
     state: JobState = .empty,
     state_reason_prev: u32 = 0,
-    steps: ?*List(Step) = null,
+    steps: ?*List(*Step) = null,
     std_err: ?CStr = null,
     std_in: ?CStr = null,
     std_out: ?CStr = null,
@@ -259,13 +259,13 @@ pub const JobFilter = extern struct {
     reservations: ?*List(CStr) = null,
     __resvid_list: ?*list_t = null,
     states: ?*List(CStr) = null,
-    steps: ?*List(SelectedStep) = null,
+    steps: ?*List(*SelectedStep) = null,
     timelimit_max: u32 = 0,
     timelimit_min: u32 = 0,
     usage_end: time_t = 0,
     usage_start: time_t = 0,
     used_nodes: ?CStr = null,
-    user_ids: ?*List2(CStr) = null,
+    user_ids: ?*List(CStr) = null,
     wckeys: ?*List(CStr) = null,
 
     pub fn init() JobFilter {
@@ -293,7 +293,7 @@ pub const AccountFilter = extern struct {
 };
 
 pub const Account = extern struct {
-    associations: ?*List(Association) = null,
+    associations: ?*List(*Association) = null,
     coordinators: ?*list_t = null,
     description: ?CStr = null,
     flags: AccountFlags = .none,
@@ -324,7 +324,7 @@ pub const UserFilter = extern struct {
 
 pub const User = extern struct {
     admin_level: AdminLevel = AdminLevel.not_set,
-    associations: ?*List(Association) = null,
+    associations: ?*List(*Association) = null,
     bf_usage: ?*BFUsage = null,
     coordinators: ?*c.list_t = null,
     default_account: ?CStr = null,
@@ -333,7 +333,7 @@ pub const User = extern struct {
     name: ?CStr = null,
     old_name: ?CStr = null,
     user_id: u32 = 0,
-    wckeys: ?*List(WCKey) = null,
+    wckeys: ?*List(*WCKey) = null,
 
     pub const get = loadUsers;
     pub const create = createUsers;
@@ -471,8 +471,8 @@ pub fn List(comptime T: type) type {
         const Self = @This();
 
         const DestroyFunc: ListDestroyFunction = switch (T) {
-            User => c.slurmdb_destroy_user_rec,
-            Association => c.slurmdb_destroy_assoc_rec,
+            *User => c.slurmdb_destroy_user_rec,
+            *Association => c.slurmdb_destroy_assoc_rec,
             else => slurm_xfree_ptr,
         };
 
@@ -480,8 +480,8 @@ pub fn List(comptime T: type) type {
             c_handle: *list_itr_t,
             index: usize = 0,
 
-            pub extern fn slurm_list_next(i: ?*list_itr_t) ?*T;
-            pub fn next(it: *Iterator) ?*T {
+            pub extern fn slurm_list_next(i: ?*list_itr_t) ?T;
+            pub fn next(it: *Iterator) ?T {
                 defer it.index += 1;
                 const item = slurm_list_next(it.c_handle);
                 return item;
@@ -529,7 +529,7 @@ pub fn List(comptime T: type) type {
             return Iterator.init(self);
         }
 
-        extern fn slurm_list_pop(l: ?*List(T)) ?*T;
+        extern fn slurm_list_pop(l: ?*List(T)) ?T;
         pub fn pop(self: *Self) ?*T {
             return slurm_list_pop(self);
         }
@@ -539,119 +539,7 @@ pub fn List(comptime T: type) type {
             return slurm_list_is_empty(self) == 1;
         }
 
-        pub extern fn slurm_list_append(l: ?*List(T), x: ?*T) void;
-        pub fn append(self: *Self, item: *const T) void {
-            slurm_list_append(self, @constCast(item));
-        }
-
-        pub fn toOwnedSlice(
-            self: *Self,
-            allocator: std.mem.Allocator,
-        ) std.mem.Allocator.Error![]*T {
-            var data: []*T = try allocator.alloc(*T, @intCast(self.size()));
-
-            var index = 0;
-            while (self.pop()) |ptr| {
-                const item = @as(*T, @alignCast(@ptrCast(ptr)));
-                data[index] = item;
-                index += 1;
-            }
-
-            self.deinit();
-            return data;
-        }
-
-        pub fn toArrayList(self: *Self, allocator: std.mem.Allocator) !std.ArrayList(*T) {
-            return std.ArrayList(*T).fromOwnedSlice(
-                allocator,
-                try self.toOwnedSlice(allocator),
-            );
-        }
-
-        pub fn fromOwnedSlice(items: []T) *List(T) {
-            var list = List(T).init();
-            for (items) |*i| {
-                list.append(i);
-            }
-            return list;
-        }
-    };
-}
-
-pub fn List2(comptime T: type) type {
-    return opaque {
-        const Self = @This();
-
-        const DestroyFunc: ListDestroyFunction = switch (T) {
-            *User => c.slurmdb_destroy_user_rec,
-            *Association => c.slurmdb_destroy_assoc_rec,
-            else => slurm_xfree_ptr,
-        };
-
-        pub const Iterator = struct {
-            c_handle: *list_itr_t,
-            index: usize = 0,
-
-            pub extern fn slurm_list_next(i: ?*list_itr_t) ?T;
-            pub fn next(it: *Iterator) ?T {
-                defer it.index += 1;
-                const item = slurm_list_next(it.c_handle);
-                return item;
-            }
-
-            extern fn slurm_list_iterator_create(l: ?*List2(T)) ?*list_itr_t;
-            pub fn init(list: *Self) Iterator {
-                const handle = slurm_list_iterator_create(list);
-                return Iterator{
-                    .c_handle = handle.?,
-                };
-            }
-
-            extern fn slurm_list_iterator_destroy(i: ?*list_itr_t) void;
-            pub fn deinit(it: *Iterator) void {
-                slurm_list_iterator_destroy(it.c_handle);
-                it.c_handle = undefined;
-            }
-
-            extern fn slurm_list_iterator_reset(i: ?*list_itr_t) void;
-            pub fn reset(it: *Iterator) void {
-                slurm_list_iterator_reset(it.c_handle);
-                it.index = 0;
-            }
-        };
-
-        extern fn slurm_list_create(f: ListDestroyFunction) ?*List2(T);
-        pub fn init() *List2(T) {
-            const list = slurm_list_create(DestroyFunc);
-            const list_typed = @as(*List2(T), @ptrCast(list.?));
-            return list_typed;
-        }
-
-        extern fn slurm_list_destroy(l: ?*List2(T)) void;
-        pub fn deinit(self: *Self) void {
-            slurm_list_destroy(self);
-        }
-
-        extern fn slurm_list_count(l: ?*List2(T)) c_int;
-        pub fn size(self: *Self) c_int {
-            return slurm_list_count(self);
-        }
-
-        pub fn iter(self: *Self) Iterator {
-            return Iterator.init(self);
-        }
-
-        extern fn slurm_list_pop(l: ?*List2(T)) ?T;
-        pub fn pop(self: *Self) ?*T {
-            return slurm_list_pop(self);
-        }
-
-        extern fn slurm_list_is_empty(l: ?*List2(T)) c_int;
-        pub fn isEmpty(self: *Self) bool {
-            return slurm_list_is_empty(self) == 1;
-        }
-
-        pub extern fn slurm_list_append(l: ?*List2(T), x: ?T) void;
+        pub extern fn slurm_list_append(l: ?*List(T), x: ?T) void;
         pub fn append(self: *Self, item: T) void {
             slurm_list_append(self, item);
         }
@@ -660,7 +548,7 @@ pub fn List2(comptime T: type) type {
             self: *Self,
             allocator: std.mem.Allocator,
         ) std.mem.Allocator.Error![]T {
-            var data: []*T = try allocator.alloc(T, @intCast(self.size()));
+            var data: []T = try allocator.alloc(T, @intCast(self.size()));
 
             var index = 0;
             while (self.pop()) |ptr| {
@@ -673,15 +561,15 @@ pub fn List2(comptime T: type) type {
             return data;
         }
 
-        pub fn toArrayList2(self: *Self, allocator: std.mem.Allocator) !std.ArrayList2(T) {
-            return std.ArrayList2(T).fromOwnedSlice(
+        pub fn toArrayList(self: *Self, allocator: std.mem.Allocator) !std.ArrayList(T) {
+            return std.ArrayList(T).fromOwnedSlice(
                 allocator,
                 try self.toOwnedSlice(allocator),
             );
         }
 
-        pub fn fromOwnedSlice(items: []T) *List2(T) {
-            var list = List2(T).init();
+        pub fn fromOwnedSlice(items: []T) *List(T) {
+            var list = List(T).init();
             for (items) |*i| {
                 list.append(@ptrCast(i));
             }
@@ -690,8 +578,8 @@ pub fn List2(comptime T: type) type {
     };
 }
 
-pub fn createCStrList(items: [][:0]const u8) *List2(CStr) {
-    var list = List2(CStr).init();
+pub fn createCStrList(items: [][:0]const u8) *List(CStr) {
+    var list = List(CStr).init();
     for (items) |*i| {
         //std.debug.print("name: {s}\n", .{&i.ptr});
         list.append(i.ptr);
@@ -699,8 +587,8 @@ pub fn createCStrList(items: [][:0]const u8) *List2(CStr) {
     return list;
 }
 
-pub extern fn slurmdb_associations_get(db_conn: ?*Connection, assoc_cond: *AssociationFilter) ?*List(Association);
-pub fn loadAssociations(conn: *Connection, filter: AssociationFilter) !List(Association) {
+pub extern fn slurmdb_associations_get(db_conn: ?*Connection, assoc_cond: *AssociationFilter) ?*List(*Association);
+pub fn loadAssociations(conn: *Connection, filter: AssociationFilter) !*List(*Association) {
     const data = slurmdb_associations_get(conn, @constCast(&filter));
     if (data) |d| {
         return d;
@@ -710,14 +598,14 @@ pub fn loadAssociations(conn: *Connection, filter: AssociationFilter) !List(Asso
     }
 }
 
-pub extern fn slurmdb_associations_add(db_conn: ?*Connection, assoc_list: ?*List(Association)) c_int;
-pub fn createAssociations(conn: *Connection, associations: *List(Association)) !void {
+pub extern fn slurmdb_associations_add(db_conn: ?*Connection, assoc_list: ?*List(*Association)) c_int;
+pub fn createAssociations(conn: *Connection, associations: *List(*Association)) !void {
     const rc = slurmdb_associations_add(conn, associations);
     try checkRpc(rc);
 }
 
-pub extern fn slurmdb_accounts_get(db_conn: ?*Connection, acct_cond: *AccountFilter) ?*List(Account);
-pub fn loadAccounts(conn: *Connection, filter: AccountFilter) !*List(Account) {
+pub extern fn slurmdb_accounts_get(db_conn: ?*Connection, acct_cond: *AccountFilter) ?*List(*Account);
+pub fn loadAccounts(conn: *Connection, filter: AccountFilter) !*List(*Account) {
     const data = slurmdb_accounts_get(conn, @constCast(&filter));
     if (data) |d| {
         return d;
@@ -727,14 +615,14 @@ pub fn loadAccounts(conn: *Connection, filter: AccountFilter) !*List(Account) {
     }
 }
 
-pub extern fn slurmdb_accounts_add(db_conn: ?*Connection, acct_list: ?*List(Account)) c_int;
-pub fn createAccounts(conn: *Connection, accounts: *List(Account)) !void {
+pub extern fn slurmdb_accounts_add(db_conn: ?*Connection, acct_list: ?*List(*Account)) c_int;
+pub fn createAccounts(conn: *Connection, accounts: *List(*Account)) !void {
     const rc = slurmdb_accounts_add(conn, accounts);
     try checkRpc(rc);
 }
 
-pub extern fn slurmdb_users_get(db_conn: ?*Connection, user_cond: *UserFilter) ?*List(User);
-pub fn loadUsers(conn: *Connection, filter: UserFilter) !*List(User) {
+pub extern fn slurmdb_users_get(db_conn: ?*Connection, user_cond: *UserFilter) ?*List(*User);
+pub fn loadUsers(conn: *Connection, filter: UserFilter) !*List(*User) {
     const data = slurmdb_users_get(conn, @constCast(&filter));
     if (data) |d| {
         return d;
@@ -744,14 +632,14 @@ pub fn loadUsers(conn: *Connection, filter: UserFilter) !*List(User) {
     }
 }
 
-pub extern fn slurmdb_users_add(db_conn: ?*Connection, user_list: ?*List(User)) c_int;
-pub fn createUsers(conn: *Connection, users: *List(User)) !void {
+pub extern fn slurmdb_users_add(db_conn: ?*Connection, user_list: ?*List(*User)) c_int;
+pub fn createUsers(conn: *Connection, users: *List(*User)) !void {
     const rc = slurmdb_users_add(conn, users);
     try checkRpc(rc);
 }
 
-pub extern fn slurmdb_jobs_get(db_conn: ?*Connection, job_cond: *JobFilter) ?*List(Job);
-pub fn loadJobs(conn: *Connection, filter: JobFilter) !*List(Job) {
+pub extern fn slurmdb_jobs_get(db_conn: ?*Connection, job_cond: *JobFilter) ?*List(*Job);
+pub fn loadJobs(conn: *Connection, filter: JobFilter) !*List(*Job) {
     const data = slurmdb_jobs_get(conn, @constCast(&filter));
     if (data) |d| {
         return d;

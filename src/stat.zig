@@ -30,7 +30,7 @@ pub const Jobacctinfo = extern struct {
     current_weighted_power: u32,
     tres_count: u32,
     tres_ids: [*]u32,
-    tres_list: ?*db.List(db.TrackableResource),
+    tres_list: ?*db.List(*db.TrackableResource),
     tres_usage_in_max: u64,
     tres_usage_in_max_nodeid: u64,
     tres_usage_in_max_taskid: u64,
@@ -75,7 +75,7 @@ pub const job_step_stat_t = extern struct {
 };
 
 pub const job_step_stat_response_msg_t = extern struct {
-    stats_list: ?*db.List(job_step_stat_t),
+    stats_list: ?*db.List(*job_step_stat_t),
     step_id: Step.ID,
 };
 
@@ -97,7 +97,7 @@ pub const assoc_mgr_lock_t = extern struct {
 
 pub extern fn assoc_mgr_lock(locks: *assoc_mgr_lock_t) void;
 pub extern fn assoc_mgr_unlock(locks: *assoc_mgr_lock_t) void;
-pub extern fn assoc_mgr_post_tres_list(new_list: *db.List(db.TrackableResource)) void;
+pub extern fn assoc_mgr_post_tres_list(new_list: *db.List(*db.TrackableResource)) void;
 pub extern fn jobacctinfo_create(jobacct_id: ?*JobacctID) ?*Jobacctinfo;
 pub extern fn jobacctinfo_destroy(object: *void) void;
 pub extern fn jobacctinfo_aggregate(dest: *Jobacctinfo, from: *Jobacctinfo) void;

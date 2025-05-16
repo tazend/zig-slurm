@@ -72,7 +72,7 @@ pub const Step = extern struct {
         last_update: time_t,
         count: u32,
         items: ?[*]Step = null,
-        stepmgr_jobs: ?*db.List(opaque {}),
+        stepmgr_jobs: ?*db.List(*opaque {}),
 
         extern fn slurm_free_job_step_info_response_msg(msg: ?*LoadResponse) void;
         pub fn deinit(self: *LoadResponse) void {
