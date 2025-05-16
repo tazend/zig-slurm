@@ -117,8 +117,8 @@ pub extern fn slurm_job_step_stat(
 pub fn statStep(allocator: std.mem.Allocator, s: *Step) anyerror!Step.Statistics {
     var total_jobacct: ?*Jobacctinfo = null;
     var stat_resp: ?*job_step_stat_response_msg_t = null;
-    //var db_step: db.Step = std.mem.zeroes(db.Step);
-    var db_stats: db.StepStats = .{};
+    var db_step: db.Step = std.mem.zeroInit(db.Step, .{});
+    var db_stats = &db_step.stats;
     var ntasks: u32 = 0;
 
     const rc = slurm_job_step_stat(
@@ -169,7 +169,7 @@ pub fn statStep(allocator: std.mem.Allocator, s: *Step) anyerror!Step.Statistics
         }
 
         if (total_jobacct) |tj| {
-            jobacctinfo_2_stats(&db_stats, tj);
+            jobacctinfo_2_stats(db_stats, tj);
             jobacctinfo_destroy(@ptrCast(tj));
         }
 
@@ -193,7 +193,7 @@ pub fn statStep(allocator: std.mem.Allocator, s: *Step) anyerror!Step.Statistics
     // TODO: this is just for prototyping, make this more ergonomic
     const cpus = if (s.num_cpus != NoValue.u32 and s.num_cpus > 0) s.num_cpus else 1;
     const run_time = if (s.run_time != NoValue.u32) s.run_time else 0;
-    return parseStats(db_stats, node_list, cpus, run_time, true);
+    return parseStats(&db_step, node_list, cpus, run_time, true);
 }
 
 pub fn find_tres_count(tres_str_in: ?CStr, id: cdef.TresType) u64 {
@@ -205,7 +205,7 @@ pub fn find_tres_count(tres_str_in: ?CStr, id: cdef.TresType) u64 {
 }
 
 pub fn parseStats(
-    stat: db.StepStats,
+    step: *db.Step,
     nodes: std.ArrayList([:0]const u8),
     cpus: u32,
     elapsed_time: time_t,
@@ -213,6 +213,7 @@ pub fn parseStats(
 ) SlurmError!Step.Statistics {
     var pstats: Step.Statistics = .{};
     const cpu_time_adj: u64 = 1000;
+    const stat = &step.stats;
 
     if (stat.consumed_energy != NoValue.u64) {
         pstats.consumed_energy = stat.consumed_energy;
@@ -262,15 +263,17 @@ pub fn parseStats(
         pstats.total_cpu_time = @intCast(
             find_tres_count(stat.tres_usage_in_tot, .cpu) / cpu_time_adj,
         );
+    } else if (step.tot_cpu_sec != NoValue.u64) {
+        pstats.total_cpu_time += step.tot_cpu_sec;
     }
-    //elif step.tot_cpu_sec != slurm.NO_VAL64:
-    //    pstats.total_cpu_time += step.tot_cpu_sec
 
-    //  if step.user_cpu_sec != slurm.NO_VAL64:
-    //      pstats.user_cpu_time += step.user_cpu_sec
+    if (step.user_cpu_sec != NoValue.u64) {
+        pstats.user_cpu_time += step.user_cpu_sec;
+    }
 
-    //  if step.sys_cpu_sec != slurm.NO_VAL64:
-    //      pstats.system_cpu_time += step.sys_cpu_sec
+    if (step.sys_cpu_sec != NoValue.u64) {
+        pstats.system_cpu_time += step.sys_cpu_sec;
+    }
 
     if (nodes.items.len > 0) {
         // TODO: is this really safe without allocating?
