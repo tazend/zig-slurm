@@ -3,8 +3,8 @@ const Allocator = std.mem.Allocator;
 const SlurmAllocator = @import("SlurmAllocator.zig");
 const builtin = std.builtin;
 
-pub const node = @import("Node.zig");
 pub const job = @import("job/job.zig");
+pub const node = @import("node.zig");
 pub const step = @import("job/step.zig");
 pub const partition = @import("partition.zig");
 

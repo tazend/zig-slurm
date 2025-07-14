@@ -304,7 +304,7 @@ pub const Node = extern struct {
         };
 
         pub const Flags = packed struct(u24) {
-            network: bool = false,
+            network: bool = false, // removed in 24.11
             reservation: bool = false,
             undrain: bool = false,
             cloud: bool = false,
