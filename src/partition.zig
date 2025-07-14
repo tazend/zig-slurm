@@ -1,14 +1,14 @@
 const std = @import("std");
-const err = @import("error.zig");
-const Error = @import("error.zig").Error;
-const time_t = std.posix.time_t;
+const slurm = @import("root.zig");
 const common = @import("common.zig");
+const err = slurm.err;
+const Error = err.Error;
+const time_t = std.posix.time_t;
 const NoValue = common.NoValue;
 const Infinite = common.Infinite;
 const CStr = common.CStr;
 const BitString = common.BitString;
-const List = @import("db.zig").List;
-const slurm = @import("root.zig");
+const List = slurm.db.List;
 
 pub const JobDefaults = extern struct {
     type: u16 = 0,
@@ -59,10 +59,10 @@ pub const Partition = extern struct {
 
     pub const LoadResponse = extern struct {
         last_update: time_t = 0,
-        record_count: u32,
+        count: u32,
         items: ?[*]Partition,
 
-        pub const empty: LoadResponse = .{ .record_count = 0, .items = null };
+        pub const empty: LoadResponse = .{ .count = 0, .items = null };
 
         extern fn slurm_free_partition_info_msg(part_info_ptr: ?*LoadResponse) void;
         pub fn deinit(self: *LoadResponse) void {
