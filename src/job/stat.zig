@@ -1,10 +1,10 @@
 const std = @import("std");
-const err = @import("error.zig");
-const common = @import("common.zig");
-const cdef = @import("slurm-ext.zig");
-const db = @import("db.zig");
-const slurm = @import("root.zig");
-const slurm_allocator = @import("SlurmAllocator.zig").slurm_allocator;
+const err = slurm.err;
+const common = @import("../common.zig");
+const cdef = @import("../slurm-ext.zig");
+const db = @import("../db.zig");
+const slurm = @import("../root.zig");
+const slurm_allocator = slurm.slurm_allocator;
 const SlurmError = err.Error;
 const time_t = std.os.linux.time_t;
 const NoValue = common.NoValue;
@@ -101,7 +101,7 @@ pub extern fn assoc_mgr_post_tres_list(new_list: *db.List(*db.TrackableResource)
 pub extern fn jobacctinfo_create(jobacct_id: ?*JobacctID) ?*Jobacctinfo;
 pub extern fn jobacctinfo_destroy(object: *void) void;
 pub extern fn jobacctinfo_aggregate(dest: *Jobacctinfo, from: *Jobacctinfo) void;
-pub extern fn jobacctinfo_2_stats(stats: *db.StepStats, jobacct: *Jobacctinfo) void;
+pub extern fn jobacctinfo_2_stats(stats: *db.Step.Stats, jobacct: *Jobacctinfo) void;
 pub extern fn slurmdb_ave_tres_usage(tres_string: ?CStr, tasks: u32) ?CStr; // tasks was c_int
 pub extern fn slurm_job_step_stat_response_msg_free(object: ?*anyopaque) void;
 pub extern fn slurmdb_find_tres_count_in_string(tres_str_in: ?CStr, id: cdef.TresType) u64;

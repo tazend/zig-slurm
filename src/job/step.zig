@@ -1,18 +1,18 @@
-const c = @import("c.zig").c;
-const cx = @import("c.zig");
+const c = @import("../c.zig").c;
+const common = @import("../common.zig");
+const slurm = @import("../root.zig");
+const cx = @import("../c.zig");
 const std = @import("std");
-const err = @import("error.zig");
-const SlurmError = @import("error.zig").Error;
+const err = slurm.err;
+const SlurmError = err.Error;
 const time_t = std.os.linux.time_t;
-const slurm_allocator = @import("SlurmAllocator.zig").slurm_allocator;
-const common = @import("common.zig");
+const slurm_allocator = slurm.slurm_allocator;
 const NoValue = common.NoValue;
 const Infinite = common.Infinite;
 const CStr = common.CStr;
 const BitString = common.BitString;
-const cdef = @import("slurm-ext.zig");
-const db = @import("db.zig");
-const slurm = @import("root.zig");
+const cdef = @import("../slurm-ext.zig");
+const db = slurm.db;
 const Allocator = std.mem.Allocator;
 
 pub const stat = @import("stat.zig").statStep;
@@ -54,6 +54,22 @@ pub const Step = extern struct {
     tres_per_socket: ?CStr = null,
     tres_per_task: ?CStr = null,
     user_id: u32 = 0,
+
+    pub const INTERACTIVE = 0xfffffffa;
+    pub const BATCH = 0xfffffffb;
+    pub const EXTERN = 0xfffffffc;
+    pub const PENDING = 0xfffffffd;
+
+    pub fn idToString(self: *Step, allocator: Allocator) ![:0]const u8 {
+        const id = self.step_id.step_id;
+        return switch (id) {
+            PENDING => "pending",
+            BATCH => "batch",
+            EXTERN => "extern",
+            INTERACTIVE => "interactive",
+            else => std.fmt.allocPrintZ(allocator, "{d}", .{id}),
+        };
+    }
 
     pub const ID = extern struct {
         sluid: cdef.sluid_t = 0,

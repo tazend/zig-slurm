@@ -1,19 +1,19 @@
 const std = @import("std");
-const err = @import("error.zig");
-const SlurmError = @import("error.zig").Error;
+const err = @import("../error.zig");
+const SlurmError = err.Error;
 const time_t = std.os.linux.time_t;
 const JobIdList = std.ArrayList(JobId);
-const slurm_allocator = @import("SlurmAllocator.zig").slurm_allocator;
-const common = @import("common.zig");
+const slurm_allocator = @import("../SlurmAllocator.zig").slurm_allocator;
+const common = @import("../common.zig");
 const NoValue = common.NoValue;
 const Infinite = common.Infinite;
 const CStr = common.CStr;
 const BitString = common.BitString;
-const cdef = @import("slurm-ext.zig");
-const db = @import("db.zig");
-const slurm = @import("root.zig");
+const cdef = @import("../slurm-ext.zig");
+const db = @import("../db.zig");
+const slurm = @import("../root.zig");
 const Allocator = std.mem.Allocator;
-const slurmctld = @import("slurmctld.zig");
+const slurmctld = @import("../slurmctld.zig");
 
 pub const JobId = u32;
 
