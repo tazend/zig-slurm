@@ -1,10 +1,12 @@
 const std = @import("std");
 const db = @import("../db.zig");
 const common = @import("../common.zig");
+const slurm = @import("../root.zig");
 const CStr = common.CStr;
 const List = db.List;
 const Connection = db.Connection;
-const checkRpc = @import("../error.zig").checkRpc;
+const err = slurm.err;
+const checkRpc = err.checkRpc;
 
 pub const Account = extern struct {
     assoc_list: ?*List(*db.Association) = null,
@@ -60,3 +62,13 @@ pub extern fn slurmdb_accounts_remove(
     acct_cond: *Account.Filter,
 ) ?*List(CStr);
 pub const removeRaw = slurmdb_accounts_remove;
+
+pub fn remove(conn: *db.Connection, filter: db.Account.Filter) !?*List(CStr) {
+    const data = removeRaw(conn, @constCast(&filter));
+    try err.getError();
+
+    return if (data) |d|
+        d
+    else
+        return error.Generic;
+}
