@@ -7,18 +7,18 @@ const Connection = db.Connection;
 const checkRpc = @import("../error.zig").checkRpc;
 
 pub const Account = extern struct {
-    associations: ?*List(*db.Association) = null,
+    assoc_list: ?*List(*db.Association) = null,
     coordinators: ?*List(*opaque {}) = null,
     description: ?CStr = null,
-    flags: Flags = .{},
+    flags: db.Account.Flags = .{},
     name: ?CStr = null,
     organization: ?CStr = null,
 
     pub const Filter = extern struct {
-        association_filter: ?*db.Association.Filter = null,
-        descriptions: ?*List(CStr) = null,
-        flags: Flags = .{},
-        organizations: ?*List(CStr) = null,
+        assoc_cond: ?*db.Association.Filter = null,
+        description_list: ?*List(CStr) = null,
+        flags: db.Account.Flags = .{},
+        organization_list: ?*List(CStr) = null,
     };
 
     pub const Flags = packed struct(u32) {
