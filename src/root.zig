@@ -7,11 +7,13 @@ pub const job = @import("job/job.zig");
 pub const node = @import("node.zig");
 pub const step = @import("job/step.zig");
 pub const partition = @import("partition.zig");
+pub const reservation = @import("reservation.zig");
 
 pub const Job = job.Job;
 pub const Step = step.Step;
 pub const Node = node.Node;
 pub const Partition = partition.Partition;
+pub const Reservation = reservation.Reservation;
 
 pub const uint = @import("uint.zig");
 pub const parseCStr = @import("common.zig").parseCStr;
