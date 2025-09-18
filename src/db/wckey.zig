@@ -19,9 +19,9 @@ pub const WCKey = extern struct {
 
     pub const Filter = extern struct {
         cluster_list: ?*List(CStr) = null,
-        __format_list: ?*List(*opaque {}) = null,
+        format_list: ?*List(*opaque {}) = null,
         id_list: ?*List(CStr) = null,
-        names: ?*List(CStr) = null,
+        name_list: ?*List(CStr) = null,
         only_defs: u16 = NoValue.u32,
         usage_end: time_t = 0,
         usage_start: time_t = 0,
