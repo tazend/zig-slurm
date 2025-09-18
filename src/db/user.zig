@@ -60,10 +60,14 @@ pub fn add(conn: *Connection, users: *List(*User)) !void {
     try checkRpc(rc);
 }
 
-pub extern fn slurmdb_users_remove(db_conn: ?*Connection, user_cond: *User.Filter) ?*List(CStr);
+pub extern fn slurmdb_users_remove(
+    db_conn: ?*Connection,
+    user_cond: *User.Filter,
+) ?*List(CStr);
 pub const removeRaw = slurmdb_users_remove;
+
 pub fn remove(conn: *Connection, filter: User.Filter) !*List(CStr) {
-    const data = slurmdb_users_remove(conn, @constCast(&filter));
+    const data = removeRaw(conn, @constCast(&filter));
     try slurm.err.getError();
 
     return if (data) |d|
