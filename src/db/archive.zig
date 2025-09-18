@@ -11,7 +11,7 @@ pub const Archive = extern struct {
     pub const Filter = extern struct {
         archive_dir: ?CStr = null,
         archive_script: ?CStr = null,
-        job_cond: ?*db.Job = null,
+        job_cond: ?*db.Job.Filter = null,
         purge_event: u32,
         purge_job: u32,
         purge_resv: u32,
