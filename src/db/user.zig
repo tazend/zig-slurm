@@ -14,16 +14,16 @@ const checkRpc = @import("../error.zig").checkRpc;
 
 pub const User = extern struct {
     admin_level: db.AdminLevel = .not_set,
-    associations: ?*List(*db.Association) = null,
-    bf_usage: ?*db.BFUsage = null,
-    coordinators: ?*List(*opaque {}) = null,
-    default_account: ?CStr = null,
+    assoc_list: ?*List(*db.Association) = null,
+    bf_usage: ?*db.BackfillUsage = null,
+    coord_accts: ?*List(*opaque {}) = null,
+    default_acct: ?CStr = null,
     default_wckey: ?CStr = null,
     flags: u32 = 0,
     name: ?CStr = null,
     old_name: ?CStr = null,
-    user_id: u32 = 0,
-    wckeys: ?*List(*db.WCKey) = null,
+    uid: u32 = 0,
+    wckey_list: ?*List(*db.WCKey) = null,
 
     extern fn slurmdb_destroy_user_rec(object: ?*User) void;
     pub fn deinit(self: *User) void {
@@ -32,9 +32,9 @@ pub const User = extern struct {
 
     pub const Filter = extern struct {
         admin_level: db.AdminLevel = .not_set,
-        association_filter: ?*db.Association.Filter = null,
-        default_accounts: ?*List(CStr) = null,
-        default_wckey_list: ?*List(CStr) = null,
+        assoc_cond: ?*db.Association.Filter = null,
+        def_acct_list: ?*List(CStr) = null,
+        def_wckey_list: ?*List(CStr) = null,
         with_assocs: u16 = 0,
         with_coords: u16 = 0,
         with_deleted: u16 = 0,
