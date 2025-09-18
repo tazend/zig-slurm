@@ -4,6 +4,7 @@ const common = @import("../common.zig");
 const CStr = common.CStr;
 const Connection = db.Connection;
 const List = db.List;
+const time_t = std.posix.time_t;
 
 pub const Reservation = extern struct {
     assocs: ?CStr = null,
@@ -14,9 +15,9 @@ pub const Reservation = extern struct {
     name: ?CStr = null,
     nodes: ?CStr = null,
     node_inx: ?CStr = null,
-    time_end: std.os.linux.time_t = 0,
-    time_start: std.os.linux.time_t = 0,
-    time_start_prev: std.os.linux.time_t = 0,
+    time_end: time_t = 0,
+    time_start: time_t = 0,
+    time_start_prev: time_t = 0,
     tres_str: ?CStr = null,
     unused_wall: f64,
     tres_list: ?*List(*opaque {}) = null,
@@ -28,8 +29,8 @@ pub const Reservation = extern struct {
         id_list: ?*List(*opaque {}) = null,
         name_list: ?*List(*opaque {}) = null,
         nodes: ?CStr = null,
-        time_end: std.os.linux.time_t = 0,
-        time_start: std.os.linux.time_t = 0,
+        time_end: time_t = 0,
+        time_start: time_t = 0,
         with_usage: u16,
     };
 };
