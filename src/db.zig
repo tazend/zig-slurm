@@ -7,6 +7,7 @@ pub const association = @import("db/association.zig");
 pub const user = @import("db/user.zig");
 pub const account = @import("db/account.zig");
 pub const list = @import("db/list.zig");
+pub const tres = @import("db/tres.zig");
 
 pub const List = list.List;
 pub const createCStrList = @import("db/list.zig").createCStrList;
@@ -17,7 +18,7 @@ pub const Transaction = @import("db/transaction.zig").Transaction;
 pub const WCKey = @import("db/wckey.zig").WCKey;
 pub const Account = account.Account;
 pub const User = user.User;
-pub const TrackableResource = @import("db/tres.zig").TrackableResource;
+pub const TrackableResource = tres.TrackableResource;
 pub const Cluster = @import("db/cluster.zig").Cluster;
 pub const Association = association.Association;
 pub const Archive = @import("db/archive.zig").Archive;
@@ -28,7 +29,7 @@ pub const Event = @import("db/event.zig").Event;
 pub extern var working_cluster_rec: *Cluster;
 pub extern var assoc_mgr_tres_list: ?*List(*TrackableResource);
 
-pub const BFUsage = extern struct {
+pub const BackfillUsage = extern struct {
     count: u64 = 0,
     last_sched: time_t = 0,
 };
