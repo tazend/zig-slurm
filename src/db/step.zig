@@ -3,7 +3,6 @@ const db = @import("../db.zig");
 const common = @import("../common.zig");
 const slurm = @import("../root.zig");
 const JobState = slurm.Job.State;
-const StepID = slurm.Step.ID;
 const CStr = common.CStr;
 const NoValue = common.NoValue;
 const Infinite = common.Infinite;
@@ -28,8 +27,8 @@ pub const Step = extern struct {
     requid: u32 = 0,
     start: time_t = 0,
     state: JobState,
-    stats: Stats = .{},
-    step_id: StepID,
+    stats: db.Step.Stats = .{},
+    step_id: slurm.Step.ID,
     stepname: ?CStr = null,
     submit_line: ?CStr = null,
     suspended: u32 = 0,
@@ -46,7 +45,7 @@ pub const Step = extern struct {
         array_bitmap: ?[*]BitString = null,
         array_task_id: u32 = NoValue.u32,
         het_job_offset: u32 = NoValue.u32,
-        step_id: StepID,
+        step_id: slurm.Step.ID,
     };
 
     pub const Stats = extern struct {
