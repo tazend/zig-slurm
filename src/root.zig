@@ -16,8 +16,8 @@ pub const Partition = partition.Partition;
 pub const Reservation = reservation.Reservation;
 
 pub const uint = @import("uint.zig");
-pub const parseCStr = @import("common.zig").parseCStr;
-pub const parseCStrZ = @import("common.zig").parseCStrZ;
+pub const parseCStr = common.parseCStr;
+pub const parseCStrZ = common.parseCStrZ;
 pub const db = @import("db.zig");
 pub const err = @import("error.zig");
 pub const Error = err.Error;
