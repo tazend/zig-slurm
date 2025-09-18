@@ -298,7 +298,7 @@ class Struct:
             print(line)
 
 
-with open('translated_structs.yml', 'r') as file:
+with open('scripts/slurm_structs.yml', 'r') as file:
    custom_struct_defs = yaml.safe_load(file)
 
 

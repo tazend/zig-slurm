@@ -1,0 +1,364 @@
+---
+
+slurmdb_txn_rec_t:
+  name: Transaction
+  file_path: src/db/transaction.zig
+  decls:
+    slurmdb_txn_cond_t:
+      name: Filter
+      members:
+        - name: acct_list
+          typ: '?*List(CStr)'
+        - name: actor_list
+          typ: '?*List(CStr)'
+        - name: action_list
+          typ: '?*List(CStr)'
+        - name: cluster_list
+          typ: '?*List(CStr)'
+        - name: id_list
+          typ: '?*List(CStr)'
+        - name: name_list
+          typ: '?*List(CStr)'
+        - name: info_list
+          typ: '?*List(CStr)'
+        - name: user_list
+          typ: '?*List(CStr)'
+        - name: format_list
+          typ: '?*List(CStr)'
+
+slurmdb_archive_rec_t:
+  name: Archive
+  file_path: src/db/archive.zig
+  decls:
+    slurmdb_archive_cond_t:
+      name: Filter
+
+slurmdb_tres_rec_t:
+  name: TrackableResource
+  file_path: src/db/tres.zig
+  decls:
+    slurmdb_tres_cond_t:
+      name: Filter
+      members:
+        - name: format_list
+          typ: '?*List(CStr)'
+        - name: id_list
+          typ: '?*List(CStr)'
+        - name: name_list
+          typ: '?*List(CStr)'
+        - name: type_list
+          typ: '?*List(CStr)'
+
+struct_slurmdb_bf_usage:
+  name: BackfillUsage
+  aliases:
+    - slurmdb_bf_usage_t
+
+struct_slurmdb_user_rec:
+  name: User
+  aliases:
+    - slurmdb_user_rec_t
+  file_path: src/db/user.zig
+  members:
+    - name: admin_level
+      typ: db.AdminLevel
+    - name: assoc_list
+      typ: '?*List(*db.Association)'
+    - name: coord_accts
+      typ: '?*List(*opaque {})'
+    - name: wckey_list
+      typ: '?*List(*db.WCKey)'
+  decls:
+    slurmdb_user_cond_t:
+      name: Filter
+      members:
+        - name: def_acct_list
+          typ: '?*List(CStr)'
+        - name: def_wckey_list
+          typ: '?*List(CStr)'
+        - name: admin_level
+          typ: db.AdminLevel
+
+slurmdb_wckey_rec_t:
+  name: WCKey
+  file_path: src/db/wckey.zig
+  decls:
+    slurmdb_wckey_cond_t:
+      name: Filter
+      members:
+        - name: cluster_list
+          typ: '?*List(CStr)'
+        - name: id_list
+          typ: '?*List(CStr)'
+        - name: user_list
+          typ: '?*List(CStr)'
+        - name: name_list
+          typ: '?*List(CStr)'
+
+struct_slurmdb_assoc_rec:
+  name: Association
+  aliases:
+    - slurmdb_assoc_rec_t
+  file_path: src/db/association.zig
+  decls:
+    slurmdb_assoc_cond_t:
+      name: Filter
+      members:
+        - name: acct_list
+          typ: '?*List(CStr)'
+        - name: cluster_list
+          typ: '?*List(CStr)'
+        - name: def_qos_id_list
+          typ: '?*List(CStr)'
+        - name: flags
+          typ: db.Association.Filter.Flags
+        - name: format_list
+          typ: '?*List(CStr)'
+        - name: id_list
+          typ: '?*List(CStr)'
+        - name: parent_acct_list
+          typ: '?*List(CStr)'
+        - name: partition_list
+          typ: '?*List(CStr)'
+        - name: qos_list
+          typ: '?*List(CStr)'
+        - name: user_list
+          typ: '?*List(CStr)'
+    struct_slurmdb_assoc_usage:
+      name: Usage
+      aliases:
+        - slurmdb_assoc_usage_t
+    slurmdb_assoc_flags_t:
+      name: Flags
+
+slurmdb_account_rec_t:
+  name: Account
+  file_path: src/db/account.zig
+  members:
+    - name: assoc_list
+      typ: '?*List(*db.Association)'
+    - name: flags
+      typ: db.Account.Flags
+  decls:
+    slurmdb_acct_flags_t:
+      name: Flags
+    slurmdb_account_cond_t:
+      name: Filter
+      members:
+        - name: description_list
+          typ: '?*List(CStr)'
+        - name: organization_list
+          typ: '?*List(CStr)'
+
+struct_reserve_info:
+  name: Reservation
+  file_path: src/reservation.zig
+  decls:
+    struct_resv_core_spec:
+      name: CoreSpec
+      aliases:
+        - resv_core_spec_t
+    struct_reserve_info_msg:
+      name: LoadResponse
+      members:
+        - name: items
+          typ: '?[*]Reservation'
+          old_name: reservation_array
+    struct_resv_desc_msg:
+      name: Updatable
+      aliases:
+        - resv_desc_msg-t
+
+slurmdb_reservation_rec_t:
+  name: Reservation
+  file_path: src/db/reservation.zig
+  decls:
+    slurmdb_reservation_cond_t:
+      name: Filter
+
+struct_slurmdb_cluster_rec:
+  name: Cluster
+  file_path: src/db/cluster.zig
+  decls:
+    slurmdb_cluster_fed_t:
+      name: Federation
+    slurmdb_cluster_cond_t:
+      name: Filter
+    slurmdb_cluster_accounting_rec_t:
+      name: Accounting
+
+struct_dynamic_plugin_data:
+  name: DynamicPluginData
+  file_path: src/slurm-ext.zig
+
+struct_acct_gather_energy:
+  name: AccountingGatherEnergy
+  file_path: src/slurm-ext.zig
+
+struct_job_descriptor:
+  name: JobSubmitDescription
+  file_path: src/job/submit_desc.zig
+
+slurmdb_federation_rec_t:
+  name: Federation
+  file_path: src/db/federation.zig
+  decls:
+    slurmdb_federation_cond_t:
+      name: Filter
+
+slurmdb_event_rec_t:
+  name: Event
+  file_path: src/db/event.zig
+  decls:
+    slurmdb_event_cond_t:
+      name: Filter
+
+slurmdb_coord_rec_t:
+  name: Coordinator
+  file_path: src/db/coordinator.zig
+
+slurmdb_job_rec_t:
+  name: Job
+  file_path: src/db/job.zig
+  members:
+    - name: steps
+      typ: '?*List(*db.Step)'
+    - name: state
+      typ: JobState
+  decls:
+    slurmdb_job_cond_t:
+      name: Filter
+      members:
+        - name: acct_list
+          typ: '?*List(CStr)'
+        - name: associd_list
+          typ: '?*List(CStr)'
+        - name: cluster_list
+          typ: '?*List(CStr)'
+        - name: constraint_list
+          typ: '?*List(CStr)'
+        - name: groupid_list
+          typ: '?*List(CStr)'
+        - name: jobname_list
+          typ: '?*List(CStr)'
+        - name: partition_list
+          typ: '?*List(CStr)'
+        - name: qos_list
+          typ: '?*List(CStr)'
+        - name: reason_list
+          typ: '?*List(CStr)'
+        - name: resv_list
+          typ: '?*List(CStr)'
+        - name: state_list
+          typ: '?*List(CStr)'
+        - name: step_list
+          typ: '?*List(*db.SelectedStep)'
+        - name: reason_list
+          typ: '?*List(CStr)'
+        - name: userid_list
+          typ: '?*List(CStr)'
+        - name: wckey_list
+          typ: '?*List(CStr)'
+        - name: flags
+          typ: db.Job.Filter.Flags
+
+struct_job_info:
+  name: Job
+  file_path: src/job/job.zig
+  members:
+    - name: shared
+      typ: Oversubscription
+    - name: mail_type
+      typ: MailFlags
+    - name: profile
+      typ: ProfileTypes
+    - name: state_reason
+      typ: State.Reason
+    - name: job_resrcs
+      typ: '?*JobResources'
+    - name: state
+      typ: State
+      old_name: job_state
+  decls:
+    struct_job_info_msg:
+      name: LoadResponse
+      members:
+        - name: count
+          typ: u32
+          value: 0
+          old_name: record_count
+        - name: items
+          typ: '?[*]Job'
+          old_name: job_array
+
+job_step_info_t:
+  name: Step
+  file_path: src/job/step.zig
+  members:
+    - name: step_id
+      typ: ID
+    - name: state
+      typ: slurm.Job.State
+  decls:
+    struct_slurm_step_id_msg:
+      name: ID
+      aliases:
+        - slurm_step_id_t
+    struct_step_update_request_msg:
+      name: Updatable
+    struct_job_step_info_response_msg:
+      name: LoadResponse
+      members:
+        - name: count
+          typ: u32
+          value: 0
+          old_name: job_step_count
+        - name: items
+          typ: '?[*]Step'
+          old_name: job_steps
+
+slurmdb_qos_rec_t:
+  name: QoS
+  file_path: src/db/qos.zig
+  decls:
+    slurmdb_qos_cond_t:
+      name: Filter
+    slurmdb_qos_usage_t:
+      name: Usage
+
+slurmdb_step_rec_t:
+  name: Step
+  file_path: src/db/step.zig
+  members:
+    - name: state
+      typ: JobState
+  decls:
+    slurm_selected_step_t:
+      name: Selected
+    slurmdb_stats_t:
+      name: Stats
+
+struct_node_info:
+  name: Node
+  file_path: src/node.zig
+  members:
+    - name: state
+      typ: State
+      old_name: node_state
+    - name: energy
+      typ: '?*c.AccountingGatherEnergy'
+    - name: select_nodeinfo
+      typ: '?*c.DynamicPluginData'
+  decls:
+    struct_node_info_msg:
+      name: LoadResponse
+      members:
+        - name: count
+          typ: u32
+          value: 0
+          old_name: record_count
+        - name: items
+          typ: '?[*]Node'
+          old_name: node_array
+
+...
