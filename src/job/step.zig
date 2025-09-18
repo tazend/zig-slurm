@@ -1,7 +1,5 @@
-const c = @import("../c.zig").c;
 const common = @import("../common.zig");
 const slurm = @import("../root.zig");
-const cx = @import("../c.zig");
 const std = @import("std");
 const err = slurm.err;
 const SlurmError = err.Error;
@@ -11,8 +9,9 @@ const NoValue = common.NoValue;
 const Infinite = common.Infinite;
 const CStr = common.CStr;
 const BitString = common.BitString;
-const cdef = @import("../slurm-ext.zig");
+const c = @import("../slurm-ext.zig");
 const db = slurm.db;
+const List = db.List;
 const Allocator = std.mem.Allocator;
 
 pub const stat = @import("stat.zig").statStep;
@@ -41,7 +40,7 @@ pub const Step = extern struct {
     srun_pid: u32 = 0,
     start_time: time_t = 0,
     start_protocol_ver: u16 = 0,
-    state: u32 = 0, //TODO
+    state: slurm.Job.State,
     step_id: ID = .{},
     submit_line: ?CStr = null,
     task_dist: u32 = 0, // TODO
@@ -72,7 +71,7 @@ pub const Step = extern struct {
     }
 
     pub const ID = extern struct {
-        sluid: cdef.sluid_t = 0,
+        sluid: c.sluid_t = 0,
         job_id: u32 = 0,
         step_het_comp: u32 = 0,
         step_id: u32 = 0,
@@ -88,7 +87,7 @@ pub const Step = extern struct {
         last_update: time_t,
         count: u32,
         items: ?[*]Step = null,
-        stepmgr_jobs: ?*db.List(*opaque {}),
+        stepmgr_jobs: ?*List(*opaque {}),
 
         extern fn slurm_free_job_step_info_response_msg(msg: ?*LoadResponse) void;
         pub fn deinit(self: *LoadResponse) void {
@@ -182,7 +181,7 @@ fn _load(job_id: ?u32) SlurmError!*Step.LoadResponse {
     const flags: slurm.ShowFlags = .full;
     const job_or_all = if (job_id) |ji| ji else common.NoValue.u32;
 
-    try err.checkRpc(cdef.slurm_get_job_steps(
+    try err.checkRpc(c.slurm_get_job_steps(
         0,
         job_or_all,
         common.NoValue.u32,
