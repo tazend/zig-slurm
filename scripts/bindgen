@@ -1,0 +1,762 @@
+#!/usr/bin/env python3
+
+# Still bit of a mess, but works for now.
+
+from dataclasses import dataclass, field
+from itertools import islice
+from typing import List, ClassVar
+from pathlib import Path
+import yaml
+import re
+
+ZIG_FUNC_REGEX = re.compile(r'fn\s+(\w+)\s*\((.*?)\)\s*([^\s;]+)')
+ZIG_PARAMS_REGEX = re.compile(r'(\w+):\s*([^,]+)')
+
+SRC_PATH = Path("src")
+DB_PATH = SRC_PATH / "db"
+
+@dataclass
+class Substitute:
+    new_type: str
+    new_value: str = None
+
+@dataclass
+class BitflagItem:
+    name: str
+    size: str = None
+    typ: str = None
+
+
+
+class ZigSourceFile:
+
+    def __init__(self, file_path: str):
+        self.file_path = file_path
+        try:
+            with open(self.file_path, "r") as zig_file:
+                self.content = zig_file.read().splitlines()
+        except FileNotFoundError as e:
+            self.content = []
+
+    def render(self):
+        for line in self.content:
+            print(line)
+
+
+@dataclass
+class Error:
+    name: str
+    old_name: str
+    description: str = None
+    code: int = 0
+
+    @staticmethod
+    def fix_name(val):
+        val = val.removeprefix("ESLURM_").removeprefix("SLURM_")
+        if val.startswith("ESLURMD"):
+            val = val.removeprefix("E")
+        elif val.startswith("ESPANK"):
+            val = val.removeprefix("E")
+        elif val == "EINPROGRESS":
+            val = "IN_PROGRESS"
+        elif val == "ERROR":
+            val = "GENERIC"
+
+        val  = unsnake(val)
+
+        if val == "SpankError":
+            val = "SpankGeneric"
+
+        val = val.replace("Error", "")
+
+        return val
+
+    def fmt(self):
+        desc = f'"{self.name}"' if not self.description else self.description
+        return f"{{ error.{self.name}, {self.code}, {desc} }}"
+
+
+@dataclass
+class Bitflag:
+    name: str = None
+    members: dict[str, BitflagItem] = field(default_factory=dict)
+    # bitsize of the largest member + 1
+    typ: str = None
+    remove_member_prefixes: List[str] = field(default_factory=list)
+
+    def fix_member_names(self):
+        for m in self.members.values():
+            for prefix_to_remove in self.remove_member_prefixes:
+                if prefix_to_remove in m.name:
+                    m.name = m.name.replace(prefix_to_remove, "").lower()
+
+@dataclass
+class StructMember:
+    name: str
+    typ: str = None
+    value: str = None
+    old_name: str = None
+    expected_position: int = None
+
+    def __init__(self, name, typ=None, value=None, old_name=None, expected_position=None):
+        self.name = name
+        self.typ = typ
+        self.value = "null" if "?" in (typ or "") else value
+        self.old_name = name if old_name is None else old_name
+        self.expected_position = expected_position
+
+    def fmt(self, indent=4):
+        white_space = " " * indent
+        if self.value:
+            return f"{white_space}{self.name}: {self.typ} = {self.value},"
+        else:
+            return f"{white_space}{self.name}: {self.typ},"
+
+    def merge_with(self, custom_member):
+        if custom_member.old_name != self.name:
+            return
+
+        if custom_member.name is not None:
+            self.name = custom_member.name
+        if custom_member.typ is not None:
+            self.typ = custom_member.typ
+        if custom_member.value is not None:
+            self.value = custom_member.value
+
+    @staticmethod
+    def from_line(line):
+        data_split = line.strip().split(":")
+        name = data_split[0].strip()
+        rest = data_split[1].strip().replace(",", "")
+        value = None
+
+        if "=" in rest:
+            rest_split = rest.split("=", 1)
+            typ = rest_split[0].strip()
+            value = rest_split[1].strip()
+        else:
+            typ = rest
+
+        # print(line, name, typ, value)
+        return StructMember(name, typ, value)
+
+    def substitute_types(self):
+        typ_sub_base = TYPE_SUBSTITUTES_BASE.get(self.typ, None)
+        if typ_sub_base:
+            self.typ = typ_sub_base.new_type
+            if typ_sub_base.new_value:
+                self.value = typ_sub_base.new_value
+
+            return
+
+        typ_prefix = ""
+        typ = self.typ
+
+        if "[*c]" in typ:
+            typ_split = typ.split("[*c]")
+            actual_typ = typ_split[-1]
+
+            # We translate those directly below, because thats easier and there
+            # are a few special cases. (like CStr)
+            if actual_typ not in ZIG_PRIMITIVES:
+                typ_prefix = "?*" * (len(typ_split) - 1)
+                typ = actual_typ
+
+        typ_sub = TYPE_SUBSTITUTES.get(typ, Substitute(typ, None))
+        self.typ = f"{typ_prefix}{typ_sub.new_type}"
+
+        if "*" in self.typ or "?" in self.typ:
+            self.value = "null"
+        elif typ_sub.new_value:
+            self.value = typ_sub.new_value
+
+#   def substitute_types(self):
+#       new_typ = TYPE_SUBSTITUTES.get(self.typ, Substitute(self.typ, None))
+
+#       if new_typ.new_value:
+#           self.value = new_typ.new_value
+#       elif "[*c]" in self.typ:
+#           new_typ.new_type = self.typ.replace("[*c]", "?*")
+#           self.value = "null"
+
+#       self.typ = new_typ.new_type
+
+
+def get_struct_members_from_raw_lines(lines_iter):
+    # TODO: Maybe start at 1 ?
+    # member_pos = 1
+    for idx, line in lines_iter:
+        line = line.lstrip()
+
+        if line.startswith("//"): continue
+        if line.startswith("};") or not line: break
+
+        member = StructMember.from_line(line)
+        member.expected_position = idx
+        # member_pos += 1
+        yield member
+
+
+@dataclass
+class ZigPrimitiveType:
+    name: str
+    default_value: str
+    slurm_no_value: str
+
+@dataclass
+class Struct:
+    name: str
+    members: List[StructMember] = field(default_factory=list)
+    captured_line: str = None
+    decls: dict = field(default_factory=dict)
+    file_path: str = None
+    start_line: int = None
+    is_nested: bool = False
+    parent: str = None
+
+    @staticmethod
+    def from_source_lines(decl, lines_iter, preserve_lineno=False):
+        decl = decl.strip().split("=")
+        name = decl[0].split(" ")[2]
+
+        struct = Struct(name)
+        for pos, m in enumerate(get_struct_members_from_raw_lines(lines_iter), start=1):
+            m.substitute_types()
+            if not preserve_lineno: m.expected_position = pos
+            struct.members.append(m)
+
+        if preserve_lineno:
+            struct.start_line = struct.members[0].expected_position - 1
+
+        return struct
+
+    @staticmethod
+    def from_yml(struct, yml):
+        if not yml:
+            return
+
+        struct.name = yml["name"]
+        struct.file_path = yml.get("file_path")
+
+        custom_members = [StructMember(**m) for m in yml.get("members", [])]
+
+        for custom_member in custom_members:
+            for member in struct.members:
+                member.merge_with(custom_member)
+
+        for old_name, raw_custom_decl in yml.get("decls", {}).items():
+            parsed_decl = raw_structs.get(old_name)
+            if not parsed_decl:
+                continue
+
+            parsed_decl.file_path = struct.file_path
+            parsed_decl.is_nested = True
+            parsed_decl.parent = struct.name
+            custom_decl = Struct.from_yml(parsed_decl, raw_custom_decl)
+            struct.decls.update({ custom_decl.name: custom_decl })
+
+        return struct
+
+    def fmt_members(self, members, indent):
+        white_space_m = " " * indent
+        out = []
+        for m in members:
+            if m is not None:
+                fmt = m.fmt(indent)
+                out.append(fmt)
+            else:
+                out.append(f"{white_space_m}UNHANDLED MEMBER")
+
+        return out
+
+    def fmt_decls(self, decls, indent):
+        white_space = " " * (indent - 4)
+        out = []
+        for d in decls.values():
+            out.append(f"{white_space}pub const {d.name} = extern struct {{")
+            out.extend(self.fmt_members(d.members, indent))
+            out.append("")
+
+            if d.decls:
+                out.extend(self.fmt_decls(d.decls, 12))
+            out.append(f"{white_space}}};")
+
+        return out
+
+    def fmt(self):
+        out = [f"pub const {self.name} = extern struct {{"]
+        out.extend(self.fmt_members(self.members, 4))
+        out.append("")
+        out.extend(self.fmt_decls(self.decls, 8))
+        out.append("};")
+        out.append("")
+
+        return out
+
+    def print(self):
+        for line in self.fmt():
+            print(line)
+
+
+with open('translated_structs.yml', 'r') as file:
+   custom_struct_defs = yaml.safe_load(file)
+
+
+def get_type_substitutes(decls, fqdn="slurm"):
+    out = {}
+
+    for struct_name, val in decls.items():
+        real_name = val["name"]
+        aliases = val.get("aliases", [])
+
+        namespace = fqdn
+        if "slurmdb" in struct_name and "db" not in namespace:
+            namespace = "db"
+
+        new_fqdn = f"{namespace}.{real_name}"
+
+        for alias in aliases:
+            out.update({alias: Substitute(new_fqdn)})
+
+        out.update({struct_name: Substitute(new_fqdn)})
+        out.update(get_type_substitutes(val.get("decls", {}), new_fqdn))
+
+    return out
+
+
+BITFLAG_MAPPING = {
+        "JOBCOND_FLAG_": Bitflag("JobFilterFlags"),
+        "MAIL_": Bitflag("MailFlags"),
+        "NODE_": Bitflag("NodeState", remove_member_prefixes=["NODE_STATE_", "NODE_"]),
+        "SHOW_": Bitflag("ShowFlags"),
+        "ASSOC_COND_FLAG_": Bitflag("AssociationFilterFlags"),
+        "JOB_": Bitflag("Job.State.Flags"),
+}
+
+raw_structs = {}
+enums_unparsed = []
+bitflag_lines = []
+
+
+def parse_slurm_bit(val):
+    v = val[:-3]
+    digits = ""
+    for d in reversed(v):
+        if d.isdigit():
+            digits = d + digits
+        else:
+            break
+
+    return digits
+
+
+def parse_bitflags(lines):
+    out = {}
+    for l in lines:
+        line_split = l.strip().split("=")
+        name_with_junk = line_split[0]
+        name = name_with_junk.split(" ")[-2]
+
+        for flag in BITFLAG_MAPPING:
+            if not name.startswith(flag):
+                continue
+
+            bf = BITFLAG_MAPPING[flag]
+
+            if not bf.remove_member_prefixes:
+                bf.remove_member_prefixes.append(flag)
+
+            val = line_split[1].strip()
+            bf_item = BitflagItem(name, parse_slurm_bit(val))
+            bf.members[bf_item.name] = bf_item
+
+    return BITFLAG_MAPPING
+
+
+def print_structs(structs):
+    for s in structs.values():
+        s.fmt()
+
+
+def print_bitflags():
+    for k, v in BITFLAG_MAPPING.items():
+        v.fix_member_names()
+        print(v.name)
+        for i in v.members.values():
+            print(i)
+
+ZIG_PRIMITIVES = [
+    "u8", "u16", "u32", "u64",
+    "i8", "i16", "i32", "i64",
+    "f8", "f16", "f32", "f64",
+    "bitstr_t",
+]
+
+TYPE_SUBSTITUTES_BASE = {
+    "[*c]bitstr_t": Substitute("?[*]BitString"),
+    "?*list_t": Substitute("?*List(*opaque {})"),
+    "[*c]u8": Substitute("?CStr"),
+    "[*c][*c]u8": Substitute("?*CStr"),
+    "time_t": Substitute("time_t", "0"),
+    "u8": Substitute("u8", "0"),
+    "u16": Substitute("u16", "0"),
+    "u32": Substitute("u32", "0"),
+    "u64": Substitute("u64", "0"),
+    "[*c]u16": Substitute("?[*]u16"),
+    "[*c]u32": Substitute("?[*]u32"),
+    "[*c]u64": Substitute("?[*]u64"),
+    "[*c]i32": Substitute("?[*]i32"),
+    "[*c]c_int": Substitute("?[*]c_int"),
+    "sluid_t": Substitute("c.sluid_t"),
+    "uid_t": Substitute("std.os.uid_t"),
+    "gid_t": Substitute("std.os.gid_t"),
+}
+
+TYPE_SUBSTITUTES = get_type_substitutes(custom_struct_defs)
+TYPE_SUBSTITUTES["pthread_mutex_t"] = Substitute("std.c.pthread_mutex_t")
+
+
+def unsnake(s):
+    return "".join(x.capitalize() for x in s.lower().split("_"))
+
+
+def emit_errors():
+    errors = parse_errnos()
+    parse_error_descriptions(errors)
+
+    print("pub const SlurmError = error{")
+    for k in errors:
+        print(f"    {k},")
+    print("};")
+    print("")
+    print("pub const entries: []const RawEntry = &.{")
+    for k, v in errors.items():
+        print(f"    .{v.fmt()},")
+    print("};")
+
+
+def parse_errnos():
+    errors = {}
+
+    with open("slurm_errno.h", "r") as errno_api:
+        lines = errno_api.readlines()
+        start_parsing = False
+        start_point = "typedef enum {"
+        error_wraps_line = False
+        previous_errno = None
+
+        for l in lines:
+            if l.startswith(start_point):
+                start_parsing = True
+                continue
+
+            if not start_parsing:
+                continue
+
+            l = l.strip()
+
+            if l.startswith("} slurm_err_t;"): break
+            if not l or l.startswith("/"): continue
+
+            errno = previous_errno
+            if "=" in l:
+                name, errno = l.split("=", 1)
+                errno = int(errno.strip()[:-1])
+                previous_errno = errno
+            else:
+                name = l.split(",", 1)[0]
+                previous_errno += 1
+                errno = previous_errno
+
+            old_name = name.strip()
+            name = Error.fix_name(old_name)
+            errors[name] = Error(name, old_name, None, errno)
+
+    errors["Generic"] = Error("Generic", "SLURM_ERROR", None, 1)
+    return errors
+
+def parse_error_descriptions(errors):
+    with open("slurm_errno.c", "r") as errno_api:
+        lines = errno_api.readlines()
+        start_parsing = False
+        start_point = "slurm_errtab_t slurm_errtab[]"
+        error_wraps_line = False
+        current_error = None
+
+        for l in lines:
+            if l.startswith(start_point):
+                start_parsing = True
+                continue
+
+            if not start_parsing:
+                continue
+
+            l = l.lstrip().rstrip()
+
+            if l.startswith("};"): break
+
+            if error_wraps_line and l.startswith("\""):
+                desc = l.split("}")[0]
+
+                err = errors.get(current_error)
+                if not err:
+                    print(f"{current_error} has no description...")
+                    continue
+
+                errors[current_error].description = desc.rstrip()
+                error_wraps_line = False
+                current_error = None
+                continue
+            elif l.startswith("{"):
+                splitted = l.split(",", 1)
+
+                name = splitted[0].split("(")[1][:-1]
+                name = Error.fix_name(name)
+                desc = splitted[1][1:].split("}")[0]
+                if desc:
+                    err = errors.get(name)
+                    if not err:
+                        print(f"{name} has no description, skipping...")
+                        continue
+                    errors[name].description = desc.rstrip()
+                else:
+                    error_wraps_line = True
+                    current_error = name
+
+
+@dataclass
+class FnArg:
+    name: str
+    typ: str
+
+
+@dataclass
+class ExternFn:
+    name: str
+    ret_type: str
+    args: List[str] = field(default_factory=list)
+
+    def fmt(self):
+        out = f"pub extern fn"
+        out += f" {self.name}"
+        out += f"({', '.join(f'{arg.name}: {arg.typ}' for arg in self.args)})"
+        out += f" {self.ret_type};"
+        return out
+
+    @staticmethod
+    def from_source_line(line):
+        match = ZIG_FUNC_REGEX.search(line)
+        if not match:
+            return None
+
+        func_name = match.group(1)
+
+        if not func_name.startswith("slurm_") and not func_name.startswith("slurmdb_"):
+            return None
+
+        params_raw = match.group(2)
+        return_type = match.group(3).strip()
+
+        # Extract individual parameters
+        params = ZIG_PARAMS_REGEX.findall(params_raw)
+        param_list = []
+        for name, typ in params:
+            typ = typ.strip()
+            typ_prefix = ""
+
+            if name == "db_conn":
+                typ = "?*db.Connection"
+            if "[*c]" in typ:
+                typ = typ.split("[*c]")[-1]
+                typ_prefix = "?*"
+
+            typ_sub = TYPE_SUBSTITUTES.get(typ, Substitute(typ, None))
+            param_list.append(FnArg(name, f"{typ_prefix}{typ_sub.new_type}"))
+
+        # param_list = [FnArg(name, typ.strip()) for name, typ in params]
+        return ExternFn(func_name, return_type, param_list)
+
+
+def find_struct(line, lines_iter, name=None, preserve_lineno=False):
+    line = line.lstrip()
+    if not line or not "extern struct" in line or line.startswith("/"):
+        return
+
+    if line.startswith("};"): return
+
+    if name is not None and name not in line:
+        return
+
+    return Struct.from_source_lines(line, lines_iter, preserve_lineno)
+
+
+with open("translated.zig", "r") as slurm_api:
+    lines = slurm_api.read().splitlines()
+    start_parsing = False
+    struct_lines = []
+    lines_iter = enumerate(lines)
+
+    for _, l in lines_iter:
+        if l.startswith("pub const sluid"):
+            start_parsing = True
+
+        if not start_parsing:
+            continue
+
+        struct = find_struct(l, lines_iter)
+        if struct:
+            raw_structs[struct.name] = struct
+        elif "SLURM_BIT" in l:
+            bitflag_lines.append(l)
+        elif "pub const" in l and "int" in l and not "__" in l:
+            enums_unparsed.append(l.strip())
+        elif l.startswith("pub extern fn"):
+            extfn = ExternFn.from_source_line(l)
+           #if extfn:
+           #    print(extfn.fmt())
+
+source_files = {}
+struct_list = []
+for struct_name in list(raw_structs.keys()):
+    struct = raw_structs[struct_name]
+    Struct.from_yml(struct, custom_struct_defs.get(struct.name))
+
+    if not struct.name:
+        continue
+
+    fp = str(struct.file_path)
+    if struct.file_path and fp not in source_files:
+        source_files[fp] = ZigSourceFile(fp)
+
+    struct_list.append(struct)
+
+# Remove everything thats nested, as it is already contained in the "decls"
+# field of the top-level struct
+struct_list = [s for s in struct_list if not s.is_nested]
+#   for struct in struct_list:
+#       print(struct.name, struct.file_path)
+
+
+@dataclass
+class LineChange:
+    new: str
+    line_number: int = None
+    current: str = None
+
+    def fmt(self):
+        if self.current:
+            print(f"{self.new} (previous: {self.current.lstrip()} @ Line {self.line_number})")
+        else:
+            print(f"{self.new} (new), expected @ Line {self.line_number}")
+
+
+@dataclass
+class StructDiff:
+    name: str
+    new_lines: List[LineChange] = field(default_factory=list)
+    modified_lines: List[LineChange] = field(default_factory=list)
+
+    @staticmethod
+    def resolve(new_struct, current_struct):
+        diff = StructDiff(current_struct.name)
+
+        for new_member in new_struct.members:
+            exists = False
+            for current_member in current_struct.members:
+                if new_member.name == current_member.name:
+                    exists = True
+                    if new_member.typ != current_member.typ:
+                        if not "?" in new_member.typ:
+                            new_member.value = current_member.value
+
+                        idx = current_member.expected_position
+                        change = LineChange(new_member.fmt(), idx, current_member.fmt())
+                        diff.modified_lines.append(change)
+                    break
+
+            if not exists:
+                idx = current_struct.start_line + new_member.expected_position
+                change = LineChange(new_member.fmt(), idx)
+                diff.new_lines.append(change)
+
+        return diff
+
+    def apply(self, lines):
+        for change in self.modified_lines:
+            lines[change.line_number - 1] = change.new
+
+        for new_member in self.new_lines:
+            lines.insert(new_member.line_number - 1, new_member.new)
+
+
+@dataclass
+class MultiStructDiff:
+    source_file: ZigSourceFile
+    struct_diffs: List[StructDiff] = field(default_factory=list)
+
+    @staticmethod
+    def resolve(struct, source_file):
+        multi_diff = MultiStructDiff(source_file)
+
+        line_iter = enumerate(source_file.content, start=1)
+        for idx, line in line_iter:
+            current_struct = find_struct(line, line_iter, preserve_lineno=True)
+            if not current_struct:
+                continue
+
+            new_struct = struct.decls.get(current_struct.name, struct)
+            if new_struct.name != current_struct.name:
+                continue
+
+            struct_diff = StructDiff.resolve(new_struct, current_struct)
+            struct_diff.apply(source_file.content)
+            multi_diff.struct_diffs.append(struct_diff)
+
+        return multi_diff
+
+    def display_changes(self):
+        for struct_diff in self.struct_diffs:
+            if not struct_diff.new_lines and not struct_diff.modified_lines:
+                continue
+
+            print(f"Changes for Struct {struct_diff.name} @ {self.source_file.file_path}:")
+            for l in struct_diff.new_lines:
+                l.fmt()
+
+            for l in struct_diff.modified_lines:
+                l.fmt()
+
+
+def modify_files(structs):
+    for struct in structs:
+        source_file = source_files.get(str(struct.file_path))
+        if not source_file:
+            continue
+
+        # Populate completely new structs that we assigned a File that does not
+        # yet exist.
+        if not source_file.content:
+            source_file.content = struct.fmt()
+            continue
+
+        msd = MultiStructDiff.resolve(struct, source_file)
+        msd.display_changes()
+
+
+#   for source_file in source_files.values():
+#       if str(source_file.file_path) != "src/db/coordinator.zig":
+#           continue
+#       source_file.render()
+
+# print_structs(struct_list)
+modify_files(struct_list)
+
+parse_bitflags(bitflag_lines)
+# print_bitflags()
+
+#   for i in enums_unparsed:
+#       print(i)
+# emit_errors()
+
+
+
