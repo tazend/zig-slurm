@@ -9,6 +9,7 @@ pub const TrackableResource = extern struct {
     rec_count: u32 = 0,
     count: u64 = 0,
     id: u32 = 0,
+    modifier: u8 = 0,
     name: ?CStr = null,
     type: ?CStr = null,
 

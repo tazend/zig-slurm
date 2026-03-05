@@ -12,6 +12,7 @@ const BitString = common.BitString;
 
 pub const Reservation = extern struct {
     accounts: ?CStr = null,
+    allowed_parts: ?CStr = null,
     burst_buffer: ?CStr = null,
     comment: ?CStr = null,
     core_cnt: u32 = 0,
@@ -29,6 +30,7 @@ pub const Reservation = extern struct {
     node_list: ?CStr = null,
     partition: ?CStr = null,
     purge_comp_time: u32 = 0,
+    qos: ?CStr = null,
     start_time: time_t = 0,
     tres_str: ?CStr = null,
     users: ?CStr = null,
@@ -46,6 +48,7 @@ pub const Reservation = extern struct {
 
     pub const Updatable = extern struct {
         accounts: ?CStr = null,
+        allowed_parts: ?CStr = null,
         burst_buffer: ?CStr = null,
         comment: ?CStr = null,
         core_cnt: u32 = null,
@@ -62,7 +65,9 @@ pub const Reservation = extern struct {
         node_list: ?CStr = null,
         partition: ?CStr = null,
         purge_comp_time: u32 = 0,
+        qos: ?CStr = null,
         start_time: time_t = 0,
+        time_force: time_t = 0,
         tres_str: ?CStr = null,
         users: ?CStr = null,
     };

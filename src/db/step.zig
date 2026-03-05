@@ -13,6 +13,7 @@ const Connection = db.Connection;
 
 pub const Step = extern struct {
     container: ?CStr = null,
+    cwd: ?CStr = null,
     elapsed: u32 = 0,
     end: time_t = 0,
     exitcode: i32 = 0,
@@ -30,11 +31,15 @@ pub const Step = extern struct {
     stats: db.Step.Stats = .{},
     step_id: slurm.Step.ID,
     stepname: ?CStr = null,
+    std_err: ?CStr = null,
+    std_in: ?CStr = null,
+    std_out: ?CStr = null,
     submit_line: ?CStr = null,
     suspended: u32 = 0,
     sys_cpu_sec: u64 = 0,
     sys_cpu_usec: u32 = 0,
     task_dist: u32 = 0,
+    timelimit: u32 = 0,
     tot_cpu_sec: u64 = 0,
     tot_cpu_usec: u32 = 0,
     tres_alloc_str: ?CStr = null,

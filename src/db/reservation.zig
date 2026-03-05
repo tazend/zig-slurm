@@ -16,6 +16,7 @@ pub const Reservation = extern struct {
     nodes: ?CStr = null,
     node_inx: ?CStr = null,
     time_end: time_t = 0,
+    time_force: time_t = 0,
     time_start: time_t = 0,
     time_start_prev: time_t = 0,
     tres_str: ?CStr = null,

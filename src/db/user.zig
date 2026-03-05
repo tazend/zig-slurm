@@ -17,6 +17,7 @@ pub const User = extern struct {
     assoc_list: ?*List(*db.Association) = null,
     bf_usage: ?*db.BackfillUsage = null,
     coord_accts: ?*List(*opaque {}) = null,
+    def_qos_id: u32 = 0,
     default_acct: ?CStr = null,
     default_wckey: ?CStr = null,
     flags: u32 = 0,

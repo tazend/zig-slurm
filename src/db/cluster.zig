@@ -20,7 +20,7 @@ pub const Cluster = extern struct {
     dim_size: ?[*]c_int,
     id: u16 = @import("std").mem.zeroes(u16),
     fed: db.Cluster.Federation,
-    flags: u32 = @import("std").mem.zeroes(u32),
+    flags: db.Cluster.Flags = .{},
     lock: std.c.pthread_mutex_t = @import("std").mem.zeroes(std.c.pthread_mutex_t),
     name: ?CStr = null,
     nodes: ?CStr = null,
@@ -44,12 +44,23 @@ pub const Cluster = extern struct {
         classification: u16,
         cluster_list: ?*List(*opaque {}) = null,
         federation_list: ?*List(*opaque {}) = null,
-        flags: u32,
+        flags: db.Cluster.Flags = .{},
         format_list: ?*List(*opaque {}) = null,
         rpc_version_list: ?*List(*opaque {}) = null,
         usage_end: time_t = 0,
         usage_start: time_t = 0,
         with_deleted: u16,
         with_usage: u16,
+    };
+
+    pub const Flags = packed struct(c_uint) {
+        deleted: bool = false,
+        register: bool = false,
+        _pad1: u5 = 0,
+        multsd: bool = false,
+        _pad2: u3 = 0,
+        fed: bool = false,
+        ext: bool = false,
+        _pad3: u19 = 0,
     };
 };
