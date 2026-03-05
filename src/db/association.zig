@@ -91,15 +91,15 @@ pub const Association = extern struct {
         };
     };
 
-    pub const Flags = enum(c_uint) {
-        none = 0,
-        deleted = 1,
-        no_update = 2,
-        exact = 4,
-        no_users_are_coordinators,
-        _base = 65535,
-        users_are_coordinators = 65536,
-        invalid = 65537,
+    pub const Flags = packed struct(c_uint) {
+        deleted: bool = false,
+        no_update: bool = false,
+        exact: bool = false,
+        no_users_are_coordinators: bool = false,
+        _pad1: u12 = 0,
+        users_are_coordinators: bool = false,
+        block_add: bool = false,
+        _pad2: u14 = 0,
     };
 
     pub const Usage = extern struct {
