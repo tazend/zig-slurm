@@ -214,61 +214,14 @@ pub const Node = extern struct {
         return Utilization.fromNode(self);
     }
 
-    pub fn allocTresMalloced(self: Node) ?CStr {
-        var alloc_tres: ?[:0]const u8 = null;
-        if (self.select_nodeinfo != null) {
-            _ = c.slurm_get_select_nodeinfo(
-                self.select_nodeinfo,
-                .tres_alloc_fmt_string,
-                .allocated,
-                &alloc_tres,
-            );
-        }
-        if (alloc_tres) |a| return a.ptr else return null;
-    }
-
-    pub fn allocTres(self: Node, allocator: std.mem.Allocator) !?[:0]const u8 {
-        const alloc_tres_malloced = self.allocTresMalloced();
-
-        if (alloc_tres_malloced) |tres_malloc| {
-            const tmp: []const u8 = std.mem.span(tres_malloc);
-            defer slurm.slurm_allocator.free(tmp);
-            return try allocator.dupeZ(u8, tmp);
-        } else return null;
-    }
-
-    pub fn allocCpus(self: Node) u16 {
-        var alloc_cpus: u16 = 0;
-        if (self.select_nodeinfo != null) {
-            _ = c.slurm_get_select_nodeinfo(
-                self.select_nodeinfo,
-                .subcount,
-                .allocated,
-                &alloc_cpus,
-            );
-        }
-        return alloc_cpus;
-    }
-
-    pub fn allocMemory(self: Node) u64 {
-        var alloc_memory: u64 = 0;
-        if (self.select_nodeinfo != null) {
-            _ = c.slurm_get_select_nodeinfo(
-                self.select_nodeinfo,
-                .mem_alloc,
-                .allocated,
-                &alloc_memory,
-            );
-        }
-        return alloc_memory;
-    }
-
     pub inline fn idleCpus(self: Node) u16 {
-        return self.cpus_efctv - self.allocCpus();
+        // TODO: check for NOVAL
+        return self.cpus_efctv - self.alloc_cpus;
     }
 
     pub inline fn idleMemory(self: Node) u64 {
-        return self.real_memory - self.allocMemory();
+        // TODO: check for NOVAL
+        return self.real_memory - self.alloc_memory;
     }
 
     pub fn delete(self: Node) !void {
