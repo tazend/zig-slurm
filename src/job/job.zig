@@ -529,40 +529,8 @@ pub const Job = extern struct {
         };
     }
 
-    pub fn getBatchScript(self: Job, allocator: std.mem.Allocator) ![:0]const u8 {
-        var msg: slurmctld.job_id_msg_t = .{ .job_id = self.job_id };
-        var req: slurmctld.slurm_msg_t = undefined;
-        var resp: slurmctld.slurm_msg_t = undefined;
-        slurmctld.slurm_msg_t_init(&req);
-        slurmctld.slurm_msg_t_init(&resp);
-
-        req.msg_type = slurmctld.slurm_msg_type_t.request_batch_script;
-        req.data = &msg;
-
-        try err.checkRpc(slurmctld.slurm_send_recv_controller_msg(
-            &req,
-            &resp,
-            db.working_cluster_rec,
-        ));
-
-        if (resp.msg_type == slurmctld.slurm_msg_type_t.response_batch_script) {
-            const data: ?[*:0]const u8 = @ptrCast(resp.data);
-            if (data) |d| {
-                const tmp: []const u8 = std.mem.span(d);
-                const script = try allocator.dupeZ(u8, tmp);
-                slurm_allocator.free(tmp);
-                return script;
-            } else return error.Generic;
-        } else if (resp.msg_type == slurmctld.slurm_msg_type_t.response_slurm_rc) {
-            const data: ?*slurmctld.return_code_msg_t = @alignCast(@ptrCast(resp.data));
-            if (data) |d| { // TODO: properly handle this error
-                _ = d.return_code;
-                slurmctld.slurm_free_return_code_msg(d);
-            }
-            return error.Generic;
-        } else {
-            return error.Generic;
-        }
+    pub fn batchScript(self: Job, allocator: std.mem.Allocator) ![:1]const u8 {
+        return getBatchScript(allocator, self.job_id);
     }
 
     extern fn slurm_get_job_stdout(buf: ?[*]u8, buf_size: c_int, job_ptr: *Job) void;
@@ -704,6 +672,42 @@ pub const Job = extern struct {
         try err.checkRpc(cdef.slurm_requeue(self.job_id, state));
     }
 };
+
+pub fn getBatchScript(allocator: std.mem.Allocator, id: JobId) ![:0]const u8 {
+    var msg: slurmctld.job_id_msg_t = .{ .job_id = id };
+    var req: slurmctld.slurm_msg_t = undefined;
+    var resp: slurmctld.slurm_msg_t = undefined;
+    slurmctld.slurm_msg_t_init(&req);
+    slurmctld.slurm_msg_t_init(&resp);
+
+    req.msg_type = slurmctld.slurm_msg_type_t.request_batch_script;
+    req.data = &msg;
+
+    try err.checkRpc(slurmctld.slurm_send_recv_controller_msg(
+        &req,
+        &resp,
+        db.working_cluster_rec,
+    ));
+
+    if (resp.msg_type == slurmctld.slurm_msg_type_t.response_batch_script) {
+        const data: ?[*:0]const u8 = @ptrCast(resp.data);
+        if (data) |d| {
+            const tmp: []const u8 = std.mem.span(d);
+            const script = try allocator.dupeZ(u8, tmp);
+            slurm_allocator.free(tmp);
+            return script;
+        } else return error.Generic;
+    } else if (resp.msg_type == slurmctld.slurm_msg_type_t.response_slurm_rc) {
+        const data: ?*slurmctld.return_code_msg_t = @ptrCast(@alignCast(resp.data));
+        if (data) |d| { // TODO: properly handle this error
+            _ = d.return_code;
+            slurmctld.slurm_free_return_code_msg(d);
+        }
+        return error.Generic;
+    } else {
+        return error.Generic;
+    }
+}
 
 pub const SignalFlags = packed struct(u16) {
     batch: bool = false,
