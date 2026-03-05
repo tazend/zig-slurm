@@ -23,14 +23,14 @@ pub const Account = extern struct {
         organization_list: ?*List(CStr) = null,
     };
 
-    pub const Flags = packed struct(u32) {
+    pub const Flags = packed struct(c_uint) {
         deleted: bool = false,
         with_assocs: bool = false,
         with_coords: bool = false,
         no_users_are_coord: bool = false,
-        _pad1: u11 = 0,
+        _pad1: u12 = 0,
         users_are_coord: bool = false,
-        _pad2: u16 = 0,
+        _pad2: u15 = 0,
     };
 };
 
