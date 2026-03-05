@@ -13,16 +13,17 @@ pub fn build(b: *std.Build) !void {
 
     const use_slurmfull = b.option(bool, "use-slurmfull", "Whether to use libslurmfull.so or not.") orelse false;
 
-    const slurm = b.addModule("slurm", .{
-        .root_source_file = b.path("src/root.zig"),
-    });
-
-    const slurm_lib = b.addStaticLibrary(.{
-        .name = "slurm",
+    const slurm_mod = b.addModule("slurm", .{
         .root_source_file = b.path("src/root.zig"),
         .target = target,
         .optimize = optimize,
         .link_libc = true,
+    });
+
+    const slurm_lib = b.addLibrary(.{
+        .name = "slurm",
+        .root_module = slurm_mod,
+        .linkage = .static,
     });
 
     setupSlurmPath(b, slurm_lib);
@@ -31,17 +32,14 @@ pub fn build(b: *std.Build) !void {
     slurm_lib.linkSystemLibrary(slurm_lib_name);
     b.installArtifact(slurm_lib);
 
-    const test_step = b.step("test", "Run slurm tests");
     const tests = b.addTest(.{
-        .name = "slurm-tests",
-        .root_source_file = b.path("src/root.zig"),
-        .target = target,
-        .optimize = optimize,
+        .root_module = slurm_mod,
     });
 
-    setupSlurmPath(b, tests);
-    tests.linkLibrary(slurm_lib);
-    tests.root_module.addImport("slurm", slurm);
-    b.installArtifact(tests);
-    test_step.dependOn(&b.addRunArtifact(tests).step);
+    //   setupSlurmPath(b, tests);
+    //    tests.linkLibrary(slurm_lib);
+    //    tests.root_module.addImport("slurm", slurm_mod);
+    const run_unit_tests = b.addRunArtifact(tests);
+    const test_step = b.step("test", "Run slurm tests");
+    test_step.dependOn(&run_unit_tests.step);
 }
