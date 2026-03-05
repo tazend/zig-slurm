@@ -26,7 +26,7 @@ pub const Reservation = @import("db/reservation.zig").Reservation;
 pub const QoS = @import("db/qos.zig").QoS;
 pub const Event = @import("db/event.zig").Event;
 
-pub extern var working_cluster_rec: *Cluster;
+pub extern var working_cluster_rec: ?*Cluster;
 pub extern var assoc_mgr_tres_list: ?*List(*TrackableResource);
 
 pub const BackfillUsage = extern struct {
