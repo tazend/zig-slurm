@@ -27,7 +27,6 @@ class BitflagItem:
     typ: str = None
 
 
-
 class ZigSourceFile:
 
     def __init__(self, file_path: str):
@@ -475,6 +474,7 @@ def parse_errnos():
     errors["Generic"] = Error("Generic", "SLURM_ERROR", None, 1)
     return errors
 
+
 def parse_error_descriptions(errors):
     with open("slurm_errno.c", "r") as errno_api:
         lines = errno_api.readlines()
@@ -590,7 +590,7 @@ def find_struct(line, lines_iter, name=None, preserve_lineno=False):
     return Struct.from_source_lines(line, lines_iter, preserve_lineno)
 
 
-with open("translated.zig", "r") as slurm_api:
+with open("translate-25-11.zig", "r") as slurm_api:
     lines = slurm_api.read().splitlines()
     start_parsing = False
     struct_lines = []
@@ -644,10 +644,22 @@ class LineChange:
     current: str = None
 
     def fmt(self):
-        if self.current:
+        if self.current and self.new:
             print(f"{self.new} (previous: {self.current.lstrip()} @ Line {self.line_number})")
-        else:
+        elif self.new:
             print(f"{self.new} (new), expected @ Line {self.line_number}")
+        else:
+            print(f"{self.current} @ Line {self.line_number} must be deleted")
+
+
+@dataclass
+class WrongLine:
+    name: str
+    wrong_line: int
+    expected_line: int
+
+    def fmt(self):
+        print(f"{self.name} invalid line: {self.wrong_line}. Expected at: {self.expected_line}")
 
 
 @dataclass
@@ -655,13 +667,38 @@ class StructDiff:
     name: str
     new_lines: List[LineChange] = field(default_factory=list)
     modified_lines: List[LineChange] = field(default_factory=list)
+    invalid_lines: List[WrongLine] = field(default_factory=list)
 
     @staticmethod
     def resolve(new_struct, current_struct):
         diff = StructDiff(current_struct.name)
 
+        deleted_members = {}
+        added_members = {}
+
+        shift_member_pos = 0
+        for idx, current_member in enumerate(list(current_struct.members)):
+            exists = False
+
+            for new_member in new_struct.members:
+                if current_member.name == new_member.name:
+                    current_member.expected_position -= shift_member_pos
+                    exists = True
+
+            if not exists:
+                shift_member_pos += 1
+                change = LineChange(None, current_member.expected_position, current_member.fmt())
+                diff.modified_lines.append(change)
+
+                if not current_struct.name in deleted_members:
+                    deleted_members[current_struct.name] = []
+                deleted_members[current_struct.name].append(current_struct.members.pop(idx))
+
         for new_member in new_struct.members:
             exists = False
+
+            new_member_pos = current_struct.start_line + new_member.expected_position
+
             for current_member in current_struct.members:
                 if new_member.name == current_member.name:
                     exists = True
@@ -672,9 +709,18 @@ class StructDiff:
                         idx = current_member.expected_position
                         change = LineChange(new_member.fmt(), idx, current_member.fmt())
                         diff.modified_lines.append(change)
+                    elif current_member.expected_position != new_member_pos and not deleted_members.get(current_struct.name) and not added_members.get(current_struct.name):
+                        change = WrongLine(current_member.fmt(), current_member.expected_position, new_member_pos)
+                        diff.invalid_lines.append(change)
+#                        print(current_member.name, current_member.expected_position, new_member_pos)
+
                     break
 
             if not exists:
+                if not current_struct.name in added_members:
+                    added_members[current_struct.name] = []
+                added_members[current_struct.name].append(new_member)
+
                 idx = current_struct.start_line + new_member.expected_position
                 change = LineChange(new_member.fmt(), idx)
                 diff.new_lines.append(change)
@@ -716,7 +762,7 @@ class MultiStructDiff:
 
     def display_changes(self):
         for struct_diff in self.struct_diffs:
-            if not struct_diff.new_lines and not struct_diff.modified_lines:
+            if not struct_diff.new_lines and not struct_diff.modified_lines and not struct_diff.invalid_lines:
                 continue
 
             print(f"Changes for Struct {struct_diff.name} @ {self.source_file.file_path}:")
@@ -726,11 +772,17 @@ class MultiStructDiff:
             for l in struct_diff.modified_lines:
                 l.fmt()
 
+            for l in struct_diff.invalid_lines:
+                l.fmt()
+
 
 def modify_files(structs):
     for struct in structs:
         source_file = source_files.get(str(struct.file_path))
         if not source_file:
+            continue
+
+        if str(source_file.file_path) != "src/db/account.zig":
             continue
 
         # Populate completely new structs that we assigned a File that does not
@@ -740,8 +792,9 @@ def modify_files(structs):
             continue
 
         msd = MultiStructDiff.resolve(struct, source_file)
-        msd.display_changes()
+        #msd.display_changes()
 
+        source_file.render()
 
 #   for source_file in source_files.values():
 #       if str(source_file.file_path) != "src/db/coordinator.zig":
