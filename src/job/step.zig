@@ -48,7 +48,7 @@ pub const Step = extern struct {
     std_in: ?CStr = null,
     std_out: ?CStr = null,
     submit_line: ?CStr = null,
-    task_dist: u32 = 0, // TODO
+    task_dist: u32 = 0,
     time_limit: u32 = 0,
     tres_bind: ?CStr = null,
     tres_fmt_alloc_str: ?CStr = null,
@@ -59,22 +59,6 @@ pub const Step = extern struct {
     tres_per_task: ?CStr = null,
     user_id: u32 = 0,
 
-    pub const INTERACTIVE = 0xfffffffa;
-    pub const BATCH = 0xfffffffb;
-    pub const EXTERN = 0xfffffffc;
-    pub const PENDING = 0xfffffffd;
-
-    pub fn idToString(self: *Step, allocator: Allocator) ![:0]const u8 {
-        const id = self.step_id.step_id;
-        return switch (id) {
-            PENDING => "pending",
-            BATCH => "batch",
-            EXTERN => "extern",
-            INTERACTIVE => "interactive",
-            else => std.fmt.allocPrintZ(allocator, "{d}", .{id}),
-        };
-    }
-
     pub const ID = extern struct {
         sluid: c.sluid_t = 0,
         job_id: u32 = 0,
@@ -82,10 +66,9 @@ pub const Step = extern struct {
         step_id: u32 = 0,
     };
 
-    pub const StatResponse = struct {
-        job_id: u32,
-        step_id: u32,
-        stats: slurm.StepStatistics,
+    pub const Updatable = extern struct {
+        step_id: slurm.Step.ID = .{},
+        time_limit: u32 = 0,
     };
 
     pub const LoadResponse = extern struct {
@@ -146,6 +129,28 @@ pub const Step = extern struct {
         //          return out.toOwnedSlice();
         //      }
     };
+
+    pub const StatResponse = struct {
+        job_id: u32,
+        step_id: u32,
+        stats: slurm.StepStatistics,
+    };
+
+    pub const INTERACTIVE = 0xfffffffa;
+    pub const BATCH = 0xfffffffb;
+    pub const EXTERN = 0xfffffffc;
+    pub const PENDING = 0xfffffffd;
+
+    pub fn idToString(self: *Step, allocator: Allocator) ![:0]const u8 {
+        const id = self.step_id.step_id;
+        return switch (id) {
+            PENDING => "pending",
+            BATCH => "batch",
+            EXTERN => "extern",
+            INTERACTIVE => "interactive",
+            else => std.fmt.allocPrintZ(allocator, "{d}", .{id}),
+        };
+    }
 
     pub const Statistics = struct {
         consumed_energy: u64 = 0,
