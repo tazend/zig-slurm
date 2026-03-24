@@ -12,6 +12,7 @@ const List = db.List;
 const Connection = db.Connection;
 const checkRpc = @import("../error.zig").checkRpc;
 const BitString = common.BitString;
+const slurmctld = slurm.slurmctld;
 
 pub const Association = extern struct {
     accounting_list: ?*List(*opaque {}) = null,
@@ -125,6 +126,54 @@ pub const Association = extern struct {
         valid_qos: ?[*]BitString = null,
     };
 
+    pub const Shares = extern struct {
+        assoc_id: u32 = 0,
+        cluster: ?CStr = null,
+        name: ?CStr = null,
+        parent: ?CStr = null,
+        partition: ?CStr = null,
+        shares_norm: f64 = 0.0,
+        shares_raw: u32 = 0,
+        tres_run_secs: ?[*]u64 = null,
+        tres_grp_mins: ?[*]u64 = null,
+        usage_efctv: f64 = 0.0,
+        usage_norm: f64 = 0.0,
+        usage_raw: u64 = 0,
+        // TODO: Can we just use f80?
+        usage_tres_raw: ?[*]c_longdouble = null,
+        fs_factor: f64 = 0.0,
+        level_fs: f64 = 0.0,
+        user: u16 = 0,
+
+        pub const LoadResponse = extern struct {
+            shares: ?*List(*Shares) = null,
+            count: u64,
+            tres_count: u32 = 0,
+            tres_names: ?*CStr = null,
+
+            // TODO: deinit!
+
+            pub fn iter(self: *LoadResponse) !db.List(*Shares).Iterator {
+                return if (self.shares) |shares|
+                    shares.iter()
+                else
+                    error.Generic;
+            }
+        };
+
+        pub const Request = extern struct {
+            accounts: ?*List(CStr) = null,
+            users: ?*List(CStr) = null,
+        };
+
+        pub fn isUserAssociation(self: *Shares) bool {
+            return if (self.user > 0)
+                true
+            else
+                false;
+        }
+    };
+
     pub const Manager = struct {
         pub const LoadResponse = extern struct {
             assoc_list: ?*List(*Association) = null,
@@ -164,6 +213,39 @@ pub fn loadUsageAll() !*Association.Manager.LoadResponse {
     try checkRpc(slurm_load_assoc_mgr_info(&req, &resp));
     return resp;
 }
+
+
+pub fn loadSharesAll() !*Association.Shares.LoadResponse {
+    var msg: Association.Shares.Request = .{};
+    var req: slurmctld.slurm_msg_t = undefined;
+    var resp: slurmctld.slurm_msg_t = undefined;
+
+    slurmctld.slurm_msg_t_init(&req);
+    slurmctld.slurm_msg_t_init(&resp);
+
+    req.msg_type = .request_share_info;
+    req.data = &msg;
+
+    try err.checkRpc(slurmctld.slurm_send_recv_controller_msg(
+        &req,
+        &resp,
+        db.working_cluster_rec,
+    ));
+
+    switch (resp.msg_type) {
+        .response_share_info => return @alignCast(@ptrCast(resp.data)),
+        .response_slurm_rc => {
+            const data: ?*slurmctld.return_code_msg_t = @alignCast(@ptrCast(resp.data));
+            if (data) |d| { // TODO: properly handle this error
+                _ = d.return_code;
+                slurmctld.slurm_free_return_code_msg(d);
+            }
+            return error.Generic;
+        },
+        else => return error.UnexpectedMsg,
+    }
+}
+
 
 pub extern fn slurmdb_associations_get(db_conn: ?*Connection, assoc_cond: *Association.Filter) ?*List(*Association);
 pub fn load(conn: *Connection, filter: Association.Filter) !*List(*Association) {
