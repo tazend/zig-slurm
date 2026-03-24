@@ -287,7 +287,10 @@ pub const Node = extern struct {
             dynamic_norm: bool = false,
             blocked: bool = false,
 
-            pub usingnamespace common.BitflagMethods(State.Flags, u24);
+            const _bf_methods = common.BitflagMethods(State.Flags, u24);
+
+            pub const toStr = _bf_methods.toStr;
+            pub const equal = _bf_methods.equal;
         };
 
         pub fn toStr(self: State, allocator: std.mem.Allocator) ![:0]const u8 {
