@@ -162,8 +162,8 @@ pub const Node = extern struct {
 
         fn fromNode(node: *Node) Utilization {
             var util = Utilization{};
-            util.alloc_memory += node.allocMemory();
-            util.alloc_cpus += node.allocCpus();
+            util.alloc_memory += node.alloc_memory;
+            util.alloc_cpus += node.alloc_cpus;
             util.total_cpus += node.cpus;
             util.effective_cpus += node.cpus_efctv;
             util.idle_cpus += util.effective_cpus - util.alloc_cpus;
