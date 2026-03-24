@@ -33,12 +33,11 @@ pub const slurm_persist_conn_t = extern struct {
     auth_uid: std.c.uid_t = memzero(std.c.uid_t),
     auth_gid: std.c.gid_t = memzero(std.c.uid_t),
     auth_ids_set: bool = memzero(bool),
-    callback_proc: ?*const fn (?*anyopaque, [*c]persist_msg_t, [*c][*c]buf_t) callconv(.C) c_int = null,
-    callback_fini: ?*const fn (?*anyopaque) callconv(.C) void = null,
+    callback_proc: ?*const fn (?*anyopaque, [*c]persist_msg_t, [*c][*c]buf_t) callconv(.c) c_int = null,
+    callback_fini: ?*const fn (?*anyopaque) callconv(.c) void = null,
     cluster_name: ?[*:0]u8 = null,
     comm_fail_time: time_t = memzero(time_t),
     my_port: u16 = memzero(u16),
-    fd: c_int = memzero(c_int),
     flags: u16 = memzero(u16),
     inited: bool = memzero(bool),
     persist_type: persist_conn_type_t = memzero(persist_conn_type_t),
@@ -48,15 +47,15 @@ pub const slurm_persist_conn_t = extern struct {
     shutdown: [*c]time_t = memzero([*c]time_t),
     thread_id: std.c.pthread_t,
     timeout: c_int = memzero(c_int),
-    tls_conn: ?*anyopaque = null,
+    conn: ?*anyopaque = null,
     trigger_callbacks: slurm_trigger_callbacks_t = memzero(slurm_trigger_callbacks_t),
     version: u16 = 0,
 };
 
 pub const buf_t = extern struct {
-    magic: u32 = 0,
-    head: ?[*:0]u8 = null,
-    size: u32 = 0,
+    magic: u32,
+    head: ?[*:0]u8,
+    size: u32,
     processed: u32 = 0,
     mmaped: bool = false,
     shadow: bool = false,
@@ -79,7 +78,7 @@ pub const slurm_msg_type_t = enum(u16) {
     _,
 };
 
-pub const slurm_addr_t = std.c.sockaddr.storage;
+pub const slurm_addr_t = std.posix.sockaddr.storage;
 
 pub const slurm_node_alias_addrs_t = extern struct {
     expiration: time_t = @import("std").mem.zeroes(time_t),
@@ -111,6 +110,7 @@ pub const forward_struct_t = extern struct {
 };
 
 pub const conmgr_fd_t = opaque {};
+pub const conmgr_fd_ref_t = opaque {};
 
 pub const slurm_msg_t = extern struct {
     address: slurm_addr_t = memzero(slurm_addr_t),
@@ -123,12 +123,14 @@ pub const slurm_msg_t = extern struct {
     restrict_uid_set: bool = memzero(bool),
     body_offset: u32 = memzero(u32),
     buffer: ?*buf_t = null,
-    conn: ?*slurm_persist_conn_t = null,
-    conn_fd: c_int = memzero(c_int),
-    conmgr_fd: ?*conmgr_fd_t = null,
+    pcon: ?*slurm_persist_conn_t = null,
+    conmgr_con: ?*conmgr_fd_ref_t = null,
     data: ?*anyopaque = null,
     flags: u16 = memzero(u16),
     hash_index: u8 = memzero(u8),
+    tls_cert: ?[*:0]u8 = null,
+    conn: ?*anyopaque = null,
+    // conn_is_mtls: bool = memzero(bool), // This is since 25.11.3
     msg_type: slurm_msg_type_t = memzero(slurm_msg_type_t),
     protocol_version: u16 = memzero(u16),
     forward: forward_t = memzero(forward_t),
@@ -138,5 +140,5 @@ pub const slurm_msg_t = extern struct {
 };
 
 pub extern fn slurm_free_return_code_msg(msg: *return_code_msg_t) void;
-pub extern fn slurm_send_recv_controller_msg(request_msg: *slurm_msg_t, response_msg: *slurm_msg_t, comm_cluster_rec: *Cluster) c_int;
+pub extern fn slurm_send_recv_controller_msg(request_msg: *slurm_msg_t, response_msg: *slurm_msg_t, comm_cluster_rec: ?*Cluster) c_int;
 pub extern fn slurm_msg_t_init(msg: *slurm_msg_t) void;
