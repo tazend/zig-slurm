@@ -41,5 +41,6 @@ pub fn build(b: *std.Build) !void {
     //    tests.root_module.addImport("slurm", slurm_mod);
     const run_unit_tests = b.addRunArtifact(tests);
     const test_step = b.step("test", "Run slurm tests");
+    b.installArtifact(tests);
     test_step.dependOn(&run_unit_tests.step);
 }
