@@ -122,10 +122,6 @@ pub fn loadJob(id: u32) Error!*Job {
     return &data.items.?[0];
 }
 
-test "slurm_allocator" {
-    try std.heap.testAllocator(slurm_allocator);
-}
-
 test {
     std.testing.refAllDeclsRecursive(Job);
 }

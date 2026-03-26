@@ -99,3 +99,7 @@ const slurm_allocator_vtable = Allocator.VTable{
     .free = free,
     .remap = remap,
 };
+
+test "slurm_allocator" {
+    try std.heap.testAllocator(slurm_allocator);
+}
