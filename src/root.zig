@@ -123,5 +123,5 @@ pub fn loadJob(id: u32) Error!*Job {
 }
 
 test {
-    std.testing.refAllDeclsRecursive(Job);
+    std.testing.refAllDecls(@This());
 }
