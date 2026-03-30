@@ -28,13 +28,14 @@ pub fn toEntry(errt: Error) ErrorEntry {
 pub fn checkRpc(errno: c_int) Error!void {
     if (errno == SLURM_SUCCESS) return;
 
-    // This must find an entry, since they are getting auto-generated from the
+    // This should find an entry, since they are getting auto-generated from the
     // source.
     inline for (entries) |entry| {
         if (entry[1] == errno) return entry[0];
     }
 
-    unreachable;
+    // Just to be safe, return error.Generic if we didn't find anything
+    return error.Generic;
 }
 
 pub fn getError() Error!void {
@@ -648,6 +649,15 @@ pub const entries: []const RawEntry = &.{
     .{ error.Generic, -1, "Unspecified error" },
 };
 
-test "getError" {
-    try getError();
+test "checkRpc" {
+    try std.testing.expectError(error.Generic, checkRpc(5));
+    try std.testing.expectError(error.Generic, checkRpc(-1));
+    try std.testing.expectError(error.DataParserInvalidState, checkRpc(9215));
+}
+
+test "toEntry" {
+    const entry = toEntry(error.DataParsingDepth);
+    try std.testing.expectEqual(entry.code, 9214);
+    try std.testing.expectEqualStrings(entry.name, @errorName(error.DataParsingDepth));
+    try std.testing.expectEqualStrings(entry.description, "Parsing tree too deep. Possible cyclic parsing detected");
 }
