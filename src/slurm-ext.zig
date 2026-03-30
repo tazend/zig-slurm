@@ -37,6 +37,7 @@ pub const AccountingGatherEnergy = extern struct {
     base_consumed_energy: u64,
     consumed_energy: u64,
     current_watts: u32,
+    last_adjustment: u64,
     previous_consumed_energy: u64,
     poll_time: time_t,
     slurmd_start_time: time_t,
