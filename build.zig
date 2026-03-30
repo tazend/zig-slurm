@@ -43,4 +43,20 @@ pub fn build(b: *std.Build) !void {
     const test_step = b.step("test", "Run slurm tests");
     b.installArtifact(tests);
     test_step.dependOn(&run_unit_tests.step);
+
+    const integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("test/root.zig"),
+            .optimize = optimize,
+            .target = target,
+            .link_libc = true,
+        }),
+        .name = "test-integration",
+    });
+
+    integration_tests.root_module.addImport("slurm", slurm_mod);
+    const run_integration_tests = b.addRunArtifact(integration_tests);
+    const integration_test_step = b.step("test-integration", "Run integration tests");
+    b.installArtifact(integration_tests);
+    integration_test_step.dependOn(&run_integration_tests.step);
 }
