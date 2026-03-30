@@ -32,29 +32,6 @@ pub const slurm_allocator = SlurmAllocator.slurm_allocator;
 
 pub const init = c.slurm_init;
 pub const deinit = c.slurm_fini;
-
-pub fn loadJobs() Error!*Job.LoadResponse {
-    var data: *Job.LoadResponse = undefined;
-    const flags: ShowFlags = .full;
-
-    try err.checkRpc(c.slurm_load_jobs(0, &data, flags));
-    return data;
-}
-
-pub fn loadJob(id: u32) Error!*Job {
-    var data: *Job.LoadResponse = undefined;
-    defer data.deinit();
-    const flags: ShowFlags = .{ .detail = true };
-
-    try err.checkRpc(c.slurm_load_job(&data, id, flags));
-
-    if (data.count != 1) return error.InvalidJobId;
-
-    // This makes the deinit() above viable, because the deinit function will
-    // think there are no Job records to free, since we extracted it here.
-    data.count = 0;
-    return &data.items.?[0];
-}
 pub const ShowFlags = c.ShowFlags;
 
 test {

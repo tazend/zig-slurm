@@ -86,7 +86,7 @@ pub extern fn slurm_load_jobs(
     show_flags: slurm.ShowFlags,
 ) c_int;
 
-extern fn slurm_load_job(
+pub extern fn slurm_load_job(
     resp: ?**slurm.Job.LoadResponse,
     job_id: u32,
     show_flags: slurm.ShowFlags,

@@ -689,6 +689,30 @@ pub const Job = extern struct {
     }
 };
 
+
+pub fn load() SlurmError!*Job.LoadResponse {
+    var data: *Job.LoadResponse = undefined;
+    const flags: c.ShowFlags = .full;
+
+    try err.checkRpc(c.slurm_load_jobs(0, &data, flags));
+    return data;
+}
+
+pub fn loadOne(id: u32) SlurmError!*Job {
+    var data: *Job.LoadResponse = undefined;
+    defer data.deinit();
+    const flags: c.ShowFlags = .{ .detail = true };
+
+    try err.checkRpc(c.slurm_load_job(&data, id, flags));
+
+    if (data.count != 1) return error.InvalidJobId;
+
+    // This makes the deinit() above viable, because the deinit function will
+    // think there are no Job records to free, since we set this to 0.
+    data.count = 0;
+    return &data.items.?[0];
+}
+
 pub fn getBatchScript(allocator: std.mem.Allocator, id: JobId) ![:0]const u8 {
     var msg: slurmctld.job_id_msg_t = .{ .job_id = id };
     var req: slurmctld.slurm_msg_t = undefined;
