@@ -6,6 +6,7 @@ const List = db.List;
 const Cluster = db.Cluster;
 pub const err = @import("error.zig");
 pub const Error = err.Error;
+const slurm = @import("root.zig");
 
 pub const persist_conn_type_t = enum(c_uint) {
     PERSIST_TYPE_NONE,
@@ -115,6 +116,14 @@ pub const forward_struct_t = extern struct {
 pub const conmgr_fd_t = opaque {};
 pub const conmgr_fd_ref_t = opaque {};
 
+fn maybeEnableField(comptime c : bool, comptime t : type) type {
+    if (c) {
+        return t;
+    } else {
+        return void;
+    }
+}
+
 pub const slurm_msg_t = extern struct {
     address: slurm_addr_t = memzero(slurm_addr_t),
     auth_cred: ?*anyopaque = null,
@@ -133,7 +142,10 @@ pub const slurm_msg_t = extern struct {
     hash_index: u8 = memzero(u8),
     tls_cert: ?[*:0]u8 = null,
     conn: ?*anyopaque = null,
-    // conn_is_mtls: bool = memzero(bool), // This is since 25.11.3
+    // This is convenient and works, but adds potentially "dead" fields.
+    // The alternative is declaring the struct anew for each possible version
+    // Or programatically add/insert fields, but then no one knows whats going on.
+    conn_is_mtls: maybeEnableField(slurm.api_version.patch >= 3, bool),
     msg_type: slurm_msg_type_t = memzero(slurm_msg_type_t),
     protocol_version: u16 = memzero(u16),
     forward: forward_t = memzero(forward_t),
