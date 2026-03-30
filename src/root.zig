@@ -33,19 +33,6 @@ pub const slurm_allocator = SlurmAllocator.slurm_allocator;
 pub const init = c.slurm_init;
 pub const deinit = c.slurm_fini;
 
-pub const ShowFlags = packed struct(u16) {
-    all: bool = false,
-    detail: bool = false,
-    mixed: bool = false,
-    local: bool = false,
-    sibling: bool = false,
-    federation: bool = false,
-    future: bool = false,
-    __padding: u9 = 0,
-
-    pub const full: ShowFlags = .{ .all = true, .detail = true };
-};
-
 pub fn loadPartitions() Error!*Partition.LoadResponse {
     var data: *Partition.LoadResponse = undefined;
     const flags: ShowFlags = .full;
@@ -122,6 +109,7 @@ pub fn loadJob(id: u32) Error!*Job {
     data.count = 0;
     return &data.items.?[0];
 }
+pub const ShowFlags = c.ShowFlags;
 
 test {
     std.testing.refAllDecls(@This());

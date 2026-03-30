@@ -12,6 +12,18 @@ pub const MEM_PER_CPU = @import("std").zig.c_translation.promoteIntLiteral(c_int
 pub const DynamicPluginData = extern struct {
     data: ?*anyopaque,
     plugin_id: u32,
+
+pub const ShowFlags = packed struct(u16) {
+    all: bool = false,
+    detail: bool = false,
+    mixed: bool = false,
+    local: bool = false,
+    sibling: bool = false,
+    federation: bool = false,
+    future: bool = false,
+    __padding: u9 = 0,
+
+    pub const full: ShowFlags = .{ .all = true, .detail = true };
 };
 
 pub const AccountingGatherEnergy = extern struct {
