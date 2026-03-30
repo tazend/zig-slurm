@@ -532,6 +532,19 @@ pub const Job = extern struct {
         };
     }
 
+    pub fn memoryTotal(self: *Job) u64 {
+        const mem = self.memoryPerResource() catch {
+            return 0;
+        };
+
+        // TODO: check for noval
+        return switch (mem) {
+            .cpu => |v| v * self.num_cpus,
+            .node => |v| v * self.num_nodes,
+            .gpu => |v| v,
+        };
+    }
+
     pub fn batchScript(self: Job, allocator: std.mem.Allocator) ![:1]const u8 {
         return getBatchScript(allocator, self.job_id);
     }
