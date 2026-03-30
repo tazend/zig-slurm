@@ -840,22 +840,22 @@ pub const DependencyCondition = enum {
 };
 
 pub const Dependencies = struct {
-    after: ?JobIdList = undefined,
-    afterany: ?JobIdList = undefined,
-    afterburstbuffer: ?JobIdList = undefined,
-    aftercorr: ?JobIdList = undefined,
-    afternotok: ?JobIdList = undefined,
-    afterok: ?JobIdList = undefined,
+    after: JobIdList = .empty,
+    afterany: JobIdList = .empty,
+    afterburstbuffer: JobIdList = .empty,
+    aftercorr: JobIdList = .empty,
+    afternotok: JobIdList = .empty,
+    afterok: JobIdList = .empty,
     singleton: bool = false,
     condition: DependencyCondition = DependencyCondition.any,
 
-    pub fn deinit(self: @This()) void {
-        if (self.after) |after| after.deinit();
-        if (self.afterany) |afterany| afterany.deinit();
-        if (self.afterburstbuffer) |afterbb| afterbb.deinit();
-        if (self.aftercorr) |aftercorr| aftercorr.deinit();
-        if (self.afternotok) |afternotok| afternotok.deinit();
-        if (self.afterok) |afterok| afterok.deinit();
+    pub fn deinit(self: *Dependencies, allocator: std.mem.Allocator) void {
+        self.after.deinit(allocator);
+        self.afterany.deinit(allocator);
+        self.afterburstbuffer.deinit(allocator);
+        self.aftercorr.deinit(allocator);
+        self.afternotok.deinit(allocator);
+        self.afterok.deinit(allocator);
     }
 };
 
@@ -897,12 +897,9 @@ fn parseDepStr(deps: []const u8, allocator: std.mem.Allocator) !?Dependencies {
         inline for (std.meta.fields(@TypeOf(depout))) |f| {
             const v = @field(depout, f.name);
             switch (@TypeOf(v)) {
-                ?JobIdList => {
+                JobIdList => {
                     if (std.mem.eql(u8, dep_type, f.name)) {
-                        if (v == null) {
-                            @field(depout, f.name) = JobIdList.init(allocator);
-                        }
-                        try @field(depout, f.name).?.append(jobid);
+                        try @field(depout, f.name).append(allocator, jobid);
                     }
                 },
                 else => {},
@@ -1016,24 +1013,24 @@ test "parse_dependencies_from_string" {
     try std.testing.expect(dep1 != null);
 
     dep = dep1.?;
-    defer dep.deinit();
-    try std.testing.expect(dep.afterany != null);
-    try std.testing.expect(dep.afterok != null);
-    try std.testing.expect(dep.afternotok == null);
-    try std.testing.expect(dep.aftercorr != null);
-    try std.testing.expect(dep.afterburstbuffer == null);
-    try std.testing.expect(dep.after == null);
+    defer dep.deinit(std.testing.allocator);
+    try std.testing.expect(dep.afterany.items.len == 2);
+    try std.testing.expect(dep.afterok.items.len == 1);
+    try std.testing.expect(dep.afternotok.items.len == 0);
+    try std.testing.expect(dep.aftercorr.items.len == 1);
+    try std.testing.expect(dep.afterburstbuffer.items.len == 0);
+    try std.testing.expect(dep.after.items.len == 0);
     try std.testing.expect(dep.singleton == false);
     try std.testing.expect(dep.condition == DependencyCondition.all);
 
     const afterany_expected_jobs = [_]u32{ 541, 542 };
-    try std.testing.expectEqualSlices(u32, &afterany_expected_jobs, dep.afterany.?.items);
+    try std.testing.expectEqualSlices(u32, &afterany_expected_jobs, dep.afterany.items);
 
     const afterok_expected_jobs = [_]u32{541};
-    try std.testing.expectEqualSlices(u32, &afterok_expected_jobs, dep.afterok.?.items);
+    try std.testing.expectEqualSlices(u32, &afterok_expected_jobs, dep.afterok.items);
 
     const aftercorr_expected_jobs = [_]u32{510};
-    try std.testing.expectEqualSlices(u32, &aftercorr_expected_jobs, dep.aftercorr.?.items);
+    try std.testing.expectEqualSlices(u32, &aftercorr_expected_jobs, dep.aftercorr.items);
 }
 
 test "bitflag_to_str" {
