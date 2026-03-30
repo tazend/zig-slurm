@@ -681,18 +681,25 @@ pub const Job = extern struct {
     }
 
     pub fn requeuex(self: Job) SlurmError!void {
-        try err.checkRpc(cdef.slurm_requeue(self.job_id, .empty));
+        try slurm.job.requeue(self.job_id);
     }
 
     pub fn requeueHold(self: Job) SlurmError!void {
-        const state: State = .{
-            .base = .pending,
-            .flags = .{ .requeue_hold = true },
-        };
-        try err.checkRpc(cdef.slurm_requeue(self.job_id, state));
+        try slurm.job.requeueHold(self.job_id);
     }
 };
 
+pub fn requeueHold(id: JobId) SlurmError!void {
+    const state: Job.State = .{
+        .base = .pending,
+        .flags = .{ .requeue_hold = true },
+    };
+    try err.checkRpc(cdef.slurm_requeue(id, state));
+}
+
+pub fn requeue(id: JobId) SlurmError!void {
+    try err.checkRpc(c.slurm_requeue(id, .empty));
+}
 
 pub fn load() SlurmError!*Job.LoadResponse {
     var data: *Job.LoadResponse = undefined;
