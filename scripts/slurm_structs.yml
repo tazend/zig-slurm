@@ -186,6 +186,8 @@ struct_slurmdb_cluster_rec:
       name: Filter
     slurmdb_cluster_accounting_rec_t:
       name: Accounting
+    slurmdb_cluster_flags_t:
+      name: Flags
 
 struct_dynamic_plugin_data:
   name: DynamicPluginData
@@ -300,7 +302,7 @@ job_step_info_t:
     - name: state
       typ: slurm.Job.State
   decls:
-    struct_slurm_step_id_msg:
+    slurm_step_id_t:
       name: ID
       aliases:
         - slurm_step_id_t
@@ -316,6 +318,15 @@ job_step_info_t:
         - name: items
           typ: '?[*]Step'
           old_name: job_steps
+
+slurmdb_res_rec_t:
+  name: Resource
+  file_path: src/db/resource.zig
+  decls:
+    slurmdb_res_cond_t:
+      name: Filter
+    slurmdb_clus_res_rec_t:
+      name: Cluster
 
 slurmdb_qos_rec_t:
   name: QoS
@@ -360,5 +371,7 @@ struct_node_info:
         - name: items
           typ: '?[*]Node'
           old_name: node_array
+    struct_slurm_update_node_msg:
+      name: Updatable
 
 ...
