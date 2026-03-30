@@ -9,6 +9,7 @@ const Infinite = common.Infinite;
 const CStr = common.CStr;
 const BitString = common.BitString;
 const List = slurm.db.List;
+const c = slurm.c;
 
 pub const JobDefaults = extern struct {
     type: u16 = 0,
@@ -72,3 +73,11 @@ pub const Partition = extern struct {
 
     pub const Updatable = Partition;
 };
+
+pub fn load() Error!*Partition.LoadResponse {
+    var data: *Partition.LoadResponse = undefined;
+    const flags: c.ShowFlags = .full;
+
+    try err.checkRpc(c.slurm_load_partitions(0, &data, flags));
+    return data;
+}

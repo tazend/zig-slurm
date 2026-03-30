@@ -33,14 +33,6 @@ pub const slurm_allocator = SlurmAllocator.slurm_allocator;
 pub const init = c.slurm_init;
 pub const deinit = c.slurm_fini;
 
-pub fn loadPartitions() Error!*Partition.LoadResponse {
-    var data: *Partition.LoadResponse = undefined;
-    const flags: ShowFlags = .full;
-
-    try err.checkRpc(c.slurm_load_partitions(0, &data, flags));
-    return data;
-}
-
 pub fn loadNodes() Error!*Node.LoadResponse {
     var node_resp: *Node.LoadResponse = undefined;
     var flags: ShowFlags = .full;
