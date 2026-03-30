@@ -13,6 +13,12 @@ pub const DynamicPluginData = extern struct {
     data: ?*anyopaque,
     plugin_id: u32,
 
+
+pub const Hash = extern struct {
+    type: u8 = 0,
+    hash: [32]u8 = @import("std").mem.zeroes([32]u8),
+};
+
 pub const ShowFlags = packed struct(u16) {
     all: bool = false,
     detail: bool = false,
@@ -74,6 +80,9 @@ pub extern fn slurm_get_select_nodeinfo(
     state: slurm.Node.State,
     data: ?*anyopaque,
 ) c_int;
+pub extern fn slurm_init_job_desc_msg(job_desc_msg: *slurm.Job.SubmitDescription) void;
+pub extern fn slurm_submit_batch_job(job_desc_msg: *slurm.Job.SubmitDescription, slurm_alloc_msg: **slurm.Job.SubmitDescription.Response) c_int;
+pub extern fn slurm_free_submit_response_response_msg(msg: ?*slurm.Job.SubmitDescription.Response) void;
 
 pub extern fn slurm_populate_node_partitions(
     node_buffer_ptr: ?*slurm.Node.LoadResponse,
