@@ -143,12 +143,6 @@ pub const Node = extern struct {
         name: ?[]const u8 = null,
     };
 
-    pub const SelectDataType = enum(c_uint) {
-        subcount = 2,
-        ptr = 5,
-        mem_alloc = 8,
-        tres_alloc_fmt_string = 9,
-        tres_alloc_weighted = 10,
     };
 
     pub const Utilization = struct {

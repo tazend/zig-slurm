@@ -9,11 +9,6 @@ pub const sluid_t = u64;
 
 pub const MEM_PER_CPU = @import("std").zig.c_translation.promoteIntLiteral(c_int, 0x8000000000000000, .hex);
 
-pub const DynamicPluginData = extern struct {
-    data: ?*anyopaque,
-    plugin_id: u32,
-
-
 pub const Hash = extern struct {
     type: u8 = 0,
     hash: [32]u8 = @import("std").mem.zeroes([32]u8),
@@ -75,12 +70,6 @@ pub extern fn slurm_load_node_single(resp: ?**slurm.Node.LoadResponse, node_name
 pub extern fn slurm_update_node(*slurm.Node.Updatable) c_int;
 pub extern fn slurm_delete_node(*slurm.Node.Updatable) c_int;
 
-pub extern fn slurm_get_select_nodeinfo(
-    nodeinfo: ?*DynamicPluginData,
-    data_type: slurm.Node.SelectDataType,
-    state: slurm.Node.State,
-    data: ?*anyopaque,
-) c_int;
 pub extern fn slurm_init_job_desc_msg(job_desc_msg: *slurm.Job.SubmitDescription) void;
 pub extern fn slurm_submit_batch_job(job_desc_msg: *slurm.Job.SubmitDescription, slurm_alloc_msg: **slurm.Job.SubmitDescription.Response) c_int;
 pub extern fn slurm_free_submit_response_response_msg(msg: ?*slurm.Job.SubmitDescription.Response) void;
