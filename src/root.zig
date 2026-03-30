@@ -25,6 +25,7 @@ pub const c = @import("slurm-ext.zig");
 pub const tres = @import("tres.zig");
 pub const gres = @import("gres.zig");
 pub const common = @import("common.zig");
+pub const slurmctld = @import("slurmctld.zig");
 const time_t = std.os.linux.time_t;
 
 pub const slurm_allocator = SlurmAllocator.slurm_allocator;
