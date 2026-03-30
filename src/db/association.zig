@@ -153,7 +153,7 @@ pub const Association = extern struct {
 
             // TODO: deinit!
 
-            pub fn iter(self: *LoadResponse) !db.List(*Shares).Iterator {
+            pub fn iter(self: *LoadResponse) !*db.List(*Shares).Iterator {
                 return if (self.shares) |shares|
                     shares.iter()
                 else
