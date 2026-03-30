@@ -138,7 +138,10 @@ pub const Job = extern struct {
 
             _padding1: u22 = 0,
 
-            pub usingnamespace common.BitflagMethods(Flags, u32);
+            const _bf_methods = common.BitflagMethods(Flags, u24);
+
+            pub const toStr = _bf_methods.toStr;
+            pub const equal = _bf_methods.equal;
         };
     };
 };
