@@ -129,6 +129,7 @@ pub const Node = extern struct {
         reason: ?CStr = null,
         reason_uid: u32 = 0,
         resume_after: u32 = NoValue.u32,
+        topology: ?CStr = null,
         weight: u32 = NoValue.u32,
     };
 
@@ -225,15 +226,15 @@ pub const Node = extern struct {
     }
 
     pub fn delete(self: Node) !void {
-        if (self.node_hostname) |name| {
-            try slurm.deleteNodesByName(std.mem.span(name));
+        if (self.name) |name| {
+            try slurm.node.deleteByName(std.mem.span(name));
         }
     }
 
     pub fn update(self: Node, changes: *Updatable) !void {
         if (self.name) |name| {
             changes.node_names = std.mem.span(name);
-            try slurm.updateNodes(changes.*);
+            try slurm.node.update(changes.*);
         }
     }
 
@@ -322,3 +323,75 @@ pub const Node = extern struct {
         }
     };
 };
+
+pub fn update(update_msg: Node.Updatable) !void {
+    try err.checkRpc(c.slurm_update_node(@constCast(&update_msg)));
+}
+
+pub fn delete(update_msg: Node.Updatable) !void {
+    try err.checkRpc(c.slurm_delete_node(@constCast(&update_msg)));
+}
+
+pub fn deleteByName(names: [:0]const u8) !void {
+    const msg: Node.Updatable = .{ .node_names = names };
+    try delete(msg);
+}
+
+pub fn loadOne(name: [:0]const u8) Error!*Node {
+    var resp = try _loadNodes(.single, name);
+    defer resp.deinit();
+
+    if (resp.count != 1) return error.InvalidNodeName;
+
+    // This makes the deinit() above viable, because the deinit function will
+    // think there are no Node records to free, since we set this to 0.
+    resp.count = 0;
+    return &resp.items.?[0];
+}
+
+pub fn load() Error!*Node.LoadResponse {
+    return _loadNodes(.all, null);
+}
+
+const LoadMode = enum {
+    single,
+    all,
+};
+
+fn _loadNodes(mode: LoadMode, name: ?CStr) Error!*Node.LoadResponse {
+    var node_resp: *Node.LoadResponse = undefined;
+    var flags: c.ShowFlags = .full;
+    flags.mixed = true;
+
+    switch (mode) {
+        .all => try err.checkRpc(c.slurm_load_node(0, &node_resp, flags)),
+        .single => try err.checkRpc(c.slurm_load_node_single(&node_resp, name.?, flags)),
+    }
+
+    const part_resp = try slurm.partition.load();
+    defer part_resp.deinit();
+
+    c.slurm_populate_node_partitions(node_resp, part_resp);
+
+    if (flags.mixed) _check_mixed_state(node_resp);
+
+    return node_resp;
+}
+
+fn _check_mixed_state(resp: *Node.LoadResponse) void {
+    var node_iter = resp.iter();
+    while (node_iter.next()) |n| {
+        if (n.name == null) continue;
+
+        const idle_cpus = n.idleCpus();
+        if (idle_cpus > 0 and idle_cpus < n.cpus_efctv) {
+            n.state.base = .mixed;
+            continue;
+        }
+
+        const alloc_tres = n.alloc_tres_fmt_str;
+        if (alloc_tres != null and idle_cpus == n.cpus_efctv) {
+            n.state.base = .mixed;
+        }
+    }
+}

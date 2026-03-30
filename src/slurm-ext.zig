@@ -63,6 +63,8 @@ pub extern fn slurm_load_node(
     show_flags: slurm.ShowFlags,
 ) c_int;
 
+pub extern fn slurm_load_node_single(resp: ?**slurm.Node.LoadResponse, node_name: ?common.CStr, show_flags: slurm.ShowFlags) c_int;
+
 pub extern fn slurm_update_node(*slurm.Node.Updatable) c_int;
 pub extern fn slurm_delete_node(*slurm.Node.Updatable) c_int;
 
