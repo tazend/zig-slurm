@@ -152,6 +152,13 @@ pub const slurm_msg_t = extern struct {
     forward_struct: ?*forward_struct_t = null,
     orig_addr: slurm_addr_t = memzero(slurm_addr_t),
     ret_list: ?*List(*opaque {}) = null,
+
+    pub fn init() slurm_msg_t {
+        var msg: slurm_msg_t = undefined;
+        slurm_msg_t_init(&msg);
+        return msg;
+    }
+};
 };
 
 pub extern fn slurm_free_return_code_msg(msg: *return_code_msg_t) void;
