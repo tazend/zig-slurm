@@ -142,9 +142,9 @@ pub const JobSubmitDescription = extern struct {
     req_switch: u32 = @import("std").mem.zeroes(u32),
     segment_size: u16 = @import("std").mem.zeroes(u16),
     selinux_context: [*c]u8 = @import("std").mem.zeroes([*c]u8),
-    std_err: [*c]u8 = @import("std").mem.zeroes([*c]u8),
-    std_in: [*c]u8 = @import("std").mem.zeroes([*c]u8),
-    std_out: [*c]u8 = @import("std").mem.zeroes([*c]u8),
+    std_err: ?CStr = null,
+    std_in: ?CStr = null,
+    std_out: ?CStr = null,
     tres_req_cnt: [*c]u64 = @import("std").mem.zeroes([*c]u64),
     wait4switch: u32 = @import("std").mem.zeroes(u32),
     wckey: [*c]u8 = @import("std").mem.zeroes([*c]u8),
@@ -162,6 +162,12 @@ pub const JobSubmitDescription = extern struct {
             c.slurm_free_submit_response_response_msg(self);
         }
     };
+
+    pub fn initEmpty() JobSubmitDescription {
+        var job: JobSubmitDescription= .{};
+        c.slurm_init_job_desc_msg(&job);
+        return job;
+    }
 
     pub fn initDefault(allocator: std.mem.Allocator) !JobSubmitDescription {
         var job: JobSubmitDescription= .{};
