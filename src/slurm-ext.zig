@@ -73,6 +73,8 @@ pub extern fn slurm_delete_node(*slurm.Node.Updatable) c_int;
 pub extern fn slurm_init_job_desc_msg(job_desc_msg: *slurm.Job.SubmitDescription) void;
 pub extern fn slurm_submit_batch_job(job_desc_msg: *slurm.Job.SubmitDescription, slurm_alloc_msg: **slurm.Job.SubmitDescription.Response) c_int;
 pub extern fn slurm_free_submit_response_response_msg(msg: ?*slurm.Job.SubmitDescription.Response) void;
+pub extern fn slurm_update_job(job_msg: *slurm.Job.SubmitDescription) c_int;
+pub extern fn slurm_free_job_info_members(job: *slurm.Job) void;
 
 pub extern fn slurm_populate_node_partitions(
     node_buffer_ptr: ?*slurm.Node.LoadResponse,
@@ -93,7 +95,7 @@ pub extern fn slurm_load_job(
 
 pub extern fn slurm_suspend(job_id: u32) c_int;
 pub extern fn slurm_resume(job_id: u32) c_int;
-pub extern fn slurm_kill_job(job_id: u32, signal: u16, flags: u16) c_int;
+pub extern fn slurm_kill_job(job_id: u32, signal: u16, flags: slurm.job.SignalFlags) c_int;
 
 // TODO: Perhaps better handling for the requeue flags.
 pub extern fn slurm_requeue(job_id: u32, flags: slurm.Job.State) c_int;
