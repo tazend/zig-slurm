@@ -69,7 +69,7 @@ pub const return_code_msg_t = extern struct {
 };
 
 pub const job_id_msg_t = extern struct {
-    job_id: u32 = 0,
+    id: slurm.Step.ID,
     show_flags: u16 = 0,
 };
 
