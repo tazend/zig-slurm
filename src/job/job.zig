@@ -9,7 +9,6 @@ const NoValue = common.NoValue;
 const Infinite = common.Infinite;
 const CStr = common.CStr;
 const BitString = common.BitString;
-const cdef = @import("../slurm-ext.zig");
 const db = @import("../db.zig");
 const slurm = @import("../root.zig");
 const Allocator = std.mem.Allocator;
@@ -511,10 +510,10 @@ pub const Job = extern struct {
         const mem_tres = self.mem_per_tres;
 
         if (mem != NoValue.u64) {
-            return if ((mem & cdef.MEM_PER_CPU) == 0)
+            return if ((mem & c.MEM_PER_CPU) == 0)
                 .{ .node = mem }
             else
-                .{ .cpu = mem & (~cdef.MEM_PER_CPU) };
+                .{ .cpu = mem & (~c.MEM_PER_CPU) };
         } else if (mem_tres) |v| {
             // TODO: TRES Parser
             _ = v;
@@ -522,6 +521,10 @@ pub const Job = extern struct {
         }
 
         return error.NoValue;
+    }
+
+    pub fn deinit(self: *Job) void {
+        c.slurm_free_job_info_members(self);
     }
 
     pub fn memory(self: *Job) u64 {
@@ -549,8 +552,8 @@ pub const Job = extern struct {
         };
     }
 
-    pub fn batchScript(self: Job, allocator: std.mem.Allocator) ![:1]const u8 {
-        return getBatchScript(allocator, self.job_id);
+    pub fn batchScript(self: *const Job, allocator: std.mem.Allocator) ![:0]const u8 {
+        return try getBatchScript(allocator, self.job_id);
     }
 
     extern fn slurm_get_job_stdout(buf: ?[*]u8, buf_size: c_int, job_ptr: *Job) void;
@@ -651,12 +654,12 @@ pub const Job = extern struct {
         return parseExitState(self.derived_ec);
     }
 
-    //  pub fn sendSignal(self: Job, signal: u16, flags: u16) SlurmError!void {
-    //      try err.checkRpc(c.slurm_kill_job(self.job_id, signal, flags));
-    //  }
+    pub fn sendSignal(self: Job, signal: u16, flags: SignalFlags) SlurmError!void {
+        try slurm.job.sendSignal(self.job_id, signal, flags);
+    }
 
     pub fn cancel(self: Job) SlurmError!void {
-        try self.sendSignal(9, 0);
+        try slurm.job.cancel(self.job_id);
     }
 
     //  pub fn loadSteps(self: Job) SlurmError!*Step.LoadResponse {
@@ -664,20 +667,19 @@ pub const Job = extern struct {
     //  }
 
     pub fn @"suspend"(self: Job) SlurmError!void {
-        try err.checkRpc(cdef.slurm_suspend(self.job_id));
+        try slurm.job.@"suspend"(self.job_id);
     }
 
     pub fn unsuspend(self: Job) SlurmError!void {
-        try err.checkRpc(cdef.slurm_resume(self.job_id));
+        try slurm.job.unsuspend(self.job_id);
     }
 
-    pub fn hold(self: Job, mode: HoldMode) void {
-        _ = mode;
-        _ = self;
+    pub fn hold(self: Job, mode: HoldMode) SlurmError!void {
+        try slurm.job.hold(self.job_id, mode);
     }
 
-    pub fn release(self: Job) void {
-        _ = self;
+    pub fn release(self: Job) SlurmError!void {
+        try slurm.job.release(self.job_id);
     }
 
     pub fn requeuex(self: Job) SlurmError!void {
@@ -689,12 +691,47 @@ pub const Job = extern struct {
     }
 };
 
+pub fn cancel(id: JobId) SlurmError!void {
+    try sendSignal(id, std.c.SIG.KILL, .{});
+}
+
+pub fn sendSignal(id: JobId, signal: u16, flags: SignalFlags) SlurmError!void {
+    try err.checkRpc(c.slurm_kill_job(id, signal, flags));
+}
+
+pub fn @"suspend"(id: JobId) SlurmError!void {
+    try err.checkRpc(c.slurm_suspend(id));
+}
+
+pub fn unsuspend(id: JobId) SlurmError!void {
+    try err.checkRpc(c.slurm_resume(id));
+}
+
+pub fn release(id: JobId) SlurmError!void {
+    var changes: Job.SubmitDescription = .initEmpty();
+    changes.step_id.job_id = id;
+    changes.priority = Infinite.u32;
+    try update(&changes);
+}
+
+pub fn hold(id: JobId, mode: HoldMode) SlurmError!void {
+    var changes: Job.SubmitDescription = .initEmpty();
+    changes.priority = 0;
+    changes.alloc_sid = @intFromEnum(mode);
+    changes.step_id.job_id = id;
+    try update(&changes);
+}
+
+pub fn update(changes: *Job.SubmitDescription) SlurmError!void {
+    try err.checkRpc(c.slurm_update_job(changes));
+}
+
 pub fn requeueHold(id: JobId) SlurmError!void {
     const state: Job.State = .{
         .base = .pending,
         .flags = .{ .requeue_hold = true },
     };
-    try err.checkRpc(cdef.slurm_requeue(id, state));
+    try err.checkRpc(c.slurm_requeue(id, state));
 }
 
 pub fn requeue(id: JobId) SlurmError!void {
@@ -709,7 +746,7 @@ pub fn load() SlurmError!*Job.LoadResponse {
     return data;
 }
 
-pub fn loadOne(id: u32) SlurmError!*Job {
+pub fn loadOne(id: u32) SlurmError!Job {
     var data: *Job.LoadResponse = undefined;
     defer data.deinit();
     const flags: c.ShowFlags = .{ .detail = true };
@@ -721,17 +758,15 @@ pub fn loadOne(id: u32) SlurmError!*Job {
     // This makes the deinit() above viable, because the deinit function will
     // think there are no Job records to free, since we set this to 0.
     data.count = 0;
-    return &data.items.?[0];
+    return data.items.?[0];
 }
 
 pub fn getBatchScript(allocator: std.mem.Allocator, id: JobId) ![:0]const u8 {
-    var msg: slurmctld.job_id_msg_t = .{ .job_id = id };
-    var req: slurmctld.slurm_msg_t = undefined;
-    var resp: slurmctld.slurm_msg_t = undefined;
-    slurmctld.slurm_msg_t_init(&req);
-    slurmctld.slurm_msg_t_init(&resp);
+    var msg: slurmctld.job_id_msg_t = .{ .id = .{ .job_id = id } };
+    var req: slurmctld.slurm_msg_t = .init();
+    var resp: slurmctld.slurm_msg_t = .init();
 
-    req.msg_type = slurmctld.slurm_msg_type_t.request_batch_script;
+    req.msg_type = .request_batch_script;
     req.data = &msg;
 
     try err.checkRpc(slurmctld.slurm_send_recv_controller_msg(
@@ -740,23 +775,25 @@ pub fn getBatchScript(allocator: std.mem.Allocator, id: JobId) ![:0]const u8 {
         db.working_cluster_rec,
     ));
 
-    if (resp.msg_type == slurmctld.slurm_msg_type_t.response_batch_script) {
-        const data: ?[*:0]const u8 = @ptrCast(resp.data);
-        if (data) |d| {
-            const tmp: []const u8 = std.mem.span(d);
-            const script = try allocator.dupeZ(u8, tmp);
-            slurm_allocator.free(tmp);
-            return script;
-        } else return error.Generic;
-    } else if (resp.msg_type == slurmctld.slurm_msg_type_t.response_slurm_rc) {
-        const data: ?*slurmctld.return_code_msg_t = @ptrCast(@alignCast(resp.data));
-        if (data) |d| { // TODO: properly handle this error
-            _ = d.return_code;
-            slurmctld.slurm_free_return_code_msg(d);
-        }
-        return error.Generic;
-    } else {
-        return error.Generic;
+    switch (resp.msg_type) {
+        .response_batch_script => {
+            const data: ?[*:0]const u8 = @ptrCast(resp.data);
+            if (data) |d| {
+                const tmp: []const u8 = std.mem.span(d);
+                const script = try allocator.dupeZ(u8, tmp);
+                slurm_allocator.free(tmp);
+                return script;
+            } else return error.Generic;
+        },
+        .response_slurm_rc => {
+            const data: ?*slurmctld.return_code_msg_t = @ptrCast(@alignCast(resp.data));
+            if (data) |d| {
+                defer slurmctld.slurm_free_return_code_msg(d);
+                try err.checkRpc(@intCast(d.return_code));
+            }
+            return error.Generic;
+        },
+        else => return error.Generic,
     }
 }
 
@@ -770,11 +807,13 @@ pub const SignalFlags = packed struct(u16) {
     oom: bool = false,
     no_sibs: bool = false,
     resv: bool = false,
-    no_cron: bool = false,
+    no_cron: bool = false, // removed at some point
     no_sig_fail: bool = false,
     jobs_verbose: bool = false,
+    cron: bool = false,
+    fail_job: bool = false,
 
-    _padding1: u4 = 0,
+    _padding1: u2 = 0,
 };
 
 pub const ProfileTypes = packed struct(u32) {
@@ -840,9 +879,9 @@ pub const MailFlags = packed struct(u16) {
     }
 };
 
-pub const HoldMode = enum {
-    user,
-    admin,
+pub const HoldMode = enum(u32) {
+    admin = 1,
+    user = 2,
 };
 
 pub const Oversubscription = enum(u16) {
