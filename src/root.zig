@@ -17,7 +17,6 @@ pub const Node = node.Node;
 pub const Partition = partition.Partition;
 pub const Reservation = reservation.Reservation;
 
-pub const uint = @import("uint.zig");
 pub const parseCStr = common.parseCStr;
 pub const parseCStrZ = common.parseCStrZ;
 pub const db = @import("db.zig");
