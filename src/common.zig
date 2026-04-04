@@ -65,3 +65,43 @@ pub fn BitflagMethods(comptime T: type, comptime E: type) type {
         }
     };
 }
+
+pub fn numberIsInfinite(val: u64) bool {
+    return switch (val) {
+        inline Infinite.u8,
+        Infinite.u16,
+        Infinite.u32,
+        Infinite.u64,
+        => true,
+        else => false,
+    };
+}
+
+pub fn numberHasValue(val: u64) bool {
+    return switch (val) {
+        inline NoValue.u8,
+        NoValue.u16,
+        NoValue.u32,
+        NoValue.u64,
+        => false,
+        else => true,
+    };
+}
+
+test "numberHasValue" {
+    try std.testing.expect(numberHasValue(10) == true);
+    try std.testing.expect(numberHasValue(NoValue.u32) == false);
+    try std.testing.expect(numberHasValue(NoValue.u64) == false);
+
+    const num: u32 = 22;
+    try std.testing.expect(numberHasValue(num) == true);
+}
+
+test "numberIsInfinite" {
+    try std.testing.expect(numberIsInfinite(10) == false);
+    try std.testing.expect(numberIsInfinite(Infinite.u32) == true);
+    try std.testing.expect(numberIsInfinite(Infinite.u64) == true);
+
+    const num: u32 = 22;
+    try std.testing.expect(numberIsInfinite(num) == false);
+}
