@@ -261,27 +261,37 @@ pub const Job = extern struct {
             // directly.
             __padding1: u8 = 0,
 
-            pub fn toStr(self: State.Flags) ?[]const u8 {
-                inline for (std.meta.fields(@TypeOf(self))) |f| {
-                    if (f.type == bool and @as(f.type, @field(self, f.name))) {
-                        return f.name;
-                    }
-                }
-                return null;
-            }
-
-            pub fn eql(a: State.Flags, b: State.Flags) bool {
-                return @as(u24, @bitCast(a)) == @as(u24, @bitCast(b));
-            }
+            const bf_methods = common.BitflagMethods(State.Flags, u24);
+            pub const toStr = bf_methods.toStr;
+            pub const jsonStringify = bf_methods.jsonStringify;
         };
 
-        pub fn toStr(self: State) []const u8 {
-            return if (!State.Flags.eql(self.flags, State.Flags{}))
-                self.flags.toStr().?
-            else if (@intFromEnum(self.base) < @intFromEnum(State.Base._end))
-                @tagName(self.base)
-            else
-                "unknown";
+        pub fn toStr(self: State, allocator: std.mem.Allocator) ![:0]const u8 {
+            var base_str: [:0]const u8 = "unknown";
+            if (@intFromEnum(self.base) < @intFromEnum(State.Base._end)) {
+                base_str = @tagName(self.base);
+            }
+
+            const sep = ",";
+            const flag_str: []const u8 = try self.flags.toStr(allocator, sep);
+            defer allocator.free(flag_str);
+
+            const size = blk: {
+                var i = base_str.len;
+                if (flag_str.len != 0) i += sep.len + flag_str.len;
+
+                break :blk i;
+            };
+
+            const slice = try allocator.allocSentinel(u8, size, 0);
+            @memcpy(slice[0..base_str.len], base_str);
+
+            if (flag_str.len != 0) {
+                @memcpy(slice[base_str.len..][0..sep.len], sep);
+                @memcpy(slice[base_str.len + sep.len ..][0..flag_str.len], flag_str);
+            }
+
+            return slice;
         }
 
         pub const Reason = enum(u32) {
@@ -814,6 +824,9 @@ pub const SignalFlags = packed struct(u16) {
     fail_job: bool = false,
 
     _padding1: u2 = 0,
+
+    const bf_methods = common.BitflagMethods(SignalFlags, u16);
+    pub const fromSlice = bf_methods.fromSlice;
 };
 
 pub const ProfileTypes = packed struct(u32) {
@@ -827,36 +840,10 @@ pub const ProfileTypes = packed struct(u32) {
 
     pub const all: ProfileTypes = @bitCast(@as(u32, (1 << 32) - 1));
 
-    pub fn toStr(self: @This(), allocator: std.mem.Allocator) ![]const u8 {
-        return try bitflagToStr(self, allocator, 2);
-    }
+    const bf_methods = common.BitflagMethods(ProfileTypes, u32);
+    pub const jsonStringify = bf_methods.jsonStringify;
+    pub const toStr = bf_methods.toStr;
 };
-
-fn bitflagToStr(flags: anytype, allocator: std.mem.Allocator, padding_count: comptime_int) ![]const u8 {
-    const sep = ",";
-
-    comptime var max_size = sep.len * (@typeInfo(@TypeOf(flags)).@"struct".fields.len - 1 - padding_count);
-    inline for (std.meta.fields(@TypeOf(flags))) |f| {
-        if (f.type == bool) max_size += f.name.len;
-    }
-
-    var result: [max_size]u8 = undefined;
-    var bytes: usize = 0;
-    inline for (std.meta.fields(@TypeOf(flags))) |f| {
-        if (f.type == bool and @as(f.type, @field(flags, f.name))) {
-            if (bytes == 0) {
-                @memcpy(result[0..f.name.len], f.name);
-                bytes += f.name.len;
-            } else {
-                @memcpy(result[bytes..][0..sep.len], sep);
-                bytes += sep.len;
-                @memcpy(result[bytes..][0..f.name.len], f.name);
-                bytes += f.name.len;
-            }
-        }
-    }
-    return try allocator.dupe(u8, result[0..bytes]);
-}
 
 pub const MailFlags = packed struct(u16) {
     begin: bool = false,
@@ -874,9 +861,9 @@ pub const MailFlags = packed struct(u16) {
 
     pub const all: MailFlags = @bitCast(@as(u16, (1 << @typeInfo(MailFlags).@"struct".fields.len - 1) - 1));
 
-    pub fn toStr(self: MailFlags, allocator: std.mem.Allocator) ![]const u8 {
-        return try bitflagToStr(self, allocator, 1);
-    }
+    const bf_methods = common.BitflagMethods(MailFlags, u16);
+    pub const jsonStringify = bf_methods.jsonStringify;
+    pub const toStr = bf_methods.toStr;
 };
 
 pub const HoldMode = enum(u32) {
@@ -1107,11 +1094,11 @@ test "parse_dependencies_from_string" {
     try std.testing.expectEqualSlices(u32, &aftercorr_expected_jobs, dep.aftercorr.items);
 }
 
-test "bitflag_to_str" {
-    const mf = MailFlags{ .end = true, .invalid_depend = true, .begin = true };
-    const mf_str = try mf.toStr(std.testing.allocator);
-    defer std.testing.allocator.free(mf_str);
-    try std.testing.expectEqualSlices(u8, "begin,end,invalid_depend", mf_str);
+test "State.toStr" {
+    const s: Job.State = .{ .base = .running, .flags = .{ .requeue = true, .requeue_hold = true }, };
+    const s_str = try s.toStr(std.testing.allocator);
+    defer std.testing.allocator.free(s_str);
+    try std.testing.expectEqualSlices(u8, "running,requeue,requeue_hold", s_str);
 }
 
 test "parseGresStr" {
