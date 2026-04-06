@@ -63,12 +63,15 @@ pub const Partition = extern struct {
         count: u32,
         items: ?[*]Partition,
 
-        pub const empty: LoadResponse = .{ .count = 0, .items = null };
-
-        extern fn slurm_free_partition_info_msg(part_info_ptr: ?*LoadResponse) void;
         pub fn deinit(self: *LoadResponse) void {
-            slurm_free_partition_info_msg(self);
+            c.slurm_free_partition_info_msg(self);
         }
+        pub const Iterator = common.LoadResponseIterator(Partition);
+
+        const methods = common.LoadResponseMethods(Partition);
+        pub const iter = methods.iter;
+        pub const get = methods.get;
+        pub const toSlice = methods.toSlice;
     };
 
     pub const Updatable = Partition;

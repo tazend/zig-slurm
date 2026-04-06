@@ -170,37 +170,16 @@ pub const Job = extern struct {
         count: u32 = 0,
         items: ?[*]Job = null,
 
-        extern fn slurm_free_job_info_msg(job_buffer_ptr: ?*LoadResponse) void;
         pub fn deinit(self: *LoadResponse) void {
-            slurm_free_job_info_msg(self);
+            c.slurm_free_job_info_msg(self);
         }
 
-        pub const Iterator = struct {
-            data: *LoadResponse,
-            count: usize,
+        pub const Iterator = common.LoadResponseIterator(Job);
 
-            pub fn next(self: *Iterator) ?*Job {
-                const id = self.count;
-                defer self.count += 1;
-                return self.data.get_job_by_index(id);
-            }
-
-            pub fn reset(self: *Iterator) void {
-                self.count = 0;
-            }
-        };
-
-        pub fn get_job_by_index(self: *LoadResponse, idx: usize) ?*Job {
-            if (idx >= self.count) return null;
-            return &self.items.?[idx];
-        }
-
-        pub fn iter(self: *LoadResponse) Iterator {
-            return Iterator{
-                .data = self,
-                .count = 0,
-            };
-        }
+        const methods = common.LoadResponseMethods(Job);
+        pub const iter = methods.iter;
+        pub const get = methods.get;
+        pub const toSlice = methods.toSlice;
     };
 
     pub const SubmitDescription = JobSubmitDescription;

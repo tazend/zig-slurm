@@ -74,42 +74,16 @@ pub const Node = extern struct {
         count: u32,
         items: ?[*]Node,
 
-        extern fn slurm_free_node_info_msg(node_buffer_ptr: ?*LoadResponse) void;
         pub fn deinit(self: *LoadResponse) void {
-            slurm_free_node_info_msg(self);
+            c.slurm_free_node_info_msg(self);
         }
 
-        pub const Iterator = struct {
-            data: *LoadResponse,
-            count: usize,
+        pub const Iterator = common.LoadResponseIterator(Node);
 
-            pub fn next(it: *Iterator) ?*Node {
-                const id = it.count;
-                defer it.count += 1;
-                return it.data.get_node_by_idx(id);
-            }
-
-            pub fn reset(it: *Iterator) void {
-                it.count = 0;
-            }
-        };
-
-        pub fn get_node_by_idx(self: *LoadResponse, idx: usize) ?*Node {
-            if (idx >= self.count) return null;
-            return &self.items.?[idx];
-        }
-
-        pub fn iter(self: *LoadResponse) Iterator {
-            return Iterator{
-                .data = self,
-                .count = 0,
-            };
-        }
-
-        pub fn asSlice(self: *LoadResponse) []Node {
-            if (self.count == 0) return &.{};
-            return self.items[0..self.count];
-        }
+        const methods = common.LoadResponseMethods(Node);
+        pub const iter = methods.iter;
+        pub const get = methods.get;
+        pub const toSlice = methods.toSlice;
     };
 
     pub const Updatable = extern struct {

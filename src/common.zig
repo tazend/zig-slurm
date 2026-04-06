@@ -1,5 +1,6 @@
 const std = @import("std");
-const slurm_allocator = @import("root.zig").slurm_allocator;
+const slurm = @import("root.zig");
+const slurm_allocator = slurm.slurm_allocator;
 
 pub const CStr = [*:0]const u8;
 pub const BitString = i64;
@@ -25,6 +26,45 @@ pub fn parseCStr(s: ?CStr) ?[]const u8 {
 pub fn parseCStrZ(s: ?CStr) ?[:0]const u8 {
     if (s == null) return null;
     return std.mem.span(s);
+}
+
+pub fn LoadResponseIterator(comptime T: type) type {
+    return struct {
+        data: *T.LoadResponse,
+        count: usize,
+        const Self = @This();
+
+        pub fn next(it: *Self) ?*T {
+            const id = it.count;
+            defer it.count += 1;
+            return it.data.get(id);
+        }
+
+        pub fn reset(it: *Self) void {
+            it.count = 0;
+        }
+    };
+}
+
+pub fn LoadResponseMethods(comptime T: type) type {
+    return struct {
+        pub fn get(self: *T.LoadResponse, idx: usize) ?*T {
+            if (idx >= self.count) return null;
+            return &self.items.?[idx];
+        }
+
+        pub fn iter(self: *T.LoadResponse) T.LoadResponse.Iterator {
+            return .{
+                .data = self,
+                .count = 0,
+            };
+        }
+
+        pub fn toSlice(self: *T.LoadResponse) []T {
+            if (self.count == 0) return &.{};
+            return self.items.?[0..self.count];
+        }
+    };
 }
 
 pub fn BitflagMethods(comptime T: type, comptime E: type) type {

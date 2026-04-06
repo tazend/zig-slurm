@@ -47,6 +47,12 @@ test "load all" {
         const name = slurm.parseCStr(item.name);
         try testing.expect(name != null);
     }
+
+    const job_slice = resp.toSlice();
+    for (job_slice) |*job| {
+        const name = slurm.parseCStr(job.name);
+        try testing.expect(name != null);
+    }
 }
 
 test "submit simple" {

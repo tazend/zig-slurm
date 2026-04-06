@@ -9,6 +9,7 @@ const NoValue = common.NoValue;
 const Infinite = common.Infinite;
 const CStr = common.CStr;
 const BitString = common.BitString;
+const c = @import("slurm-ext.zig");
 
 pub const Reservation = extern struct {
     accounts: ?CStr = null,
@@ -44,6 +45,17 @@ pub const Reservation = extern struct {
         last_update: time_t,
         record_count: u32 = 0,
         items: ?[*]Reservation = null,
+
+        pub fn deinit(self: *LoadResponse) void {
+            c.slurm_free_reservation_info_msg(self);
+        }
+
+        pub const Iterator = common.LoadResponseIterator(Reservation);
+
+        const methods = common.LoadResponseMethods(Reservation);
+        pub const iter = methods.iter;
+        pub const get = methods.get;
+        pub const toSlice = methods.toSlice;
     };
 
     pub const Updatable = extern struct {

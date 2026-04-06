@@ -69,12 +69,17 @@ pub extern fn slurm_load_node_single(resp: ?**slurm.Node.LoadResponse, node_name
 
 pub extern fn slurm_update_node(*slurm.Node.Updatable) c_int;
 pub extern fn slurm_delete_node(*slurm.Node.Updatable) c_int;
+pub extern fn slurm_free_node_info_msg(node_buffer_ptr: ?*slurm.Node.LoadResponse) void;
 
 pub extern fn slurm_init_job_desc_msg(job_desc_msg: *slurm.Job.SubmitDescription) void;
 pub extern fn slurm_submit_batch_job(job_desc_msg: *slurm.Job.SubmitDescription, slurm_alloc_msg: **slurm.Job.SubmitDescription.Response) c_int;
 pub extern fn slurm_free_submit_response_response_msg(msg: ?*slurm.Job.SubmitDescription.Response) void;
 pub extern fn slurm_update_job(job_msg: *slurm.Job.SubmitDescription) c_int;
 pub extern fn slurm_free_job_info_members(job: *slurm.Job) void;
+pub extern fn slurm_free_job_info_msg(job_buffer_ptr: ?*slurm.Job.LoadResponse) void;
+pub extern fn slurm_free_partition_info_msg(part_info_ptr: ?*slurm.Partition.LoadResponse) void;
+
+pub extern fn slurm_free_reservation_info_msg(resv_info_ptr: ?*slurm.Reservation.LoadResponse) void;
 
 pub extern fn slurm_populate_node_partitions(
     node_buffer_ptr: ?*slurm.Node.LoadResponse,
