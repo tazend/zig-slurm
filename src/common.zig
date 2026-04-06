@@ -29,6 +29,18 @@ pub fn parseCStrZ(s: ?CStr) ?[:0]const u8 {
 
 pub fn BitflagMethods(comptime T: type, comptime E: type) type {
     return struct {
+        pub fn jsonStringify(self: T, jw: anytype) !void {
+            try jw.beginArray();
+            const fields = std.meta.fields(T);
+
+            inline for (fields) |field| {
+                if (field.type == bool and @as(field.type, @field(self, field.name))) {
+                    try jw.write(field.name);
+                }
+            }
+            try jw.endArray();
+        }
+
         fn maxStrSize(comptime sep: []const u8) comptime_int {
             var max_size = 0;
             for (std.meta.fields(T)) |f| {
