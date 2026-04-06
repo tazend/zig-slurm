@@ -132,3 +132,10 @@ test "numberIsInfinite" {
     const num: u32 = 22;
     try std.testing.expect(numberIsInfinite(num) == false);
 }
+
+test "BitflagMethods.toStr" {
+    const mf = slurm.job.MailFlags{ .end = true, .invalid_depend = true, .begin = true };
+    const mf_str = try mf.toStr(std.testing.allocator, ",");
+    defer std.testing.allocator.free(mf_str);
+    try std.testing.expectEqualSlices(u8, "begin,end,invalid_depend", mf_str);
+}
