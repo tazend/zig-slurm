@@ -141,7 +141,7 @@ pub const Job = extern struct {
             const _bf_methods = common.BitflagMethods(Flags, u24);
 
             pub const toStr = _bf_methods.toStr;
-            pub const equal = _bf_methods.equal;
+            pub const eql = _bf_methods.eql;
         };
     };
 };
