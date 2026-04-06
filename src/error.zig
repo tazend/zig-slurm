@@ -25,8 +25,15 @@ pub fn toEntry(errt: Error) ErrorEntry {
     unreachable;
 }
 
-pub fn checkRpc(errno: c_int) Error!void {
-    if (errno == SLURM_SUCCESS) return;
+pub fn checkRpc(rc: c_int) Error!void {
+    if (rc == SLURM_SUCCESS) return;
+
+    // Sometimes, Slurm functions only return -1 to indicate failure and set
+    // errno
+    const errno = if (rc == -1)
+        std.c._errno().*
+    else
+        rc;
 
     // This should find an entry, since they are getting auto-generated from the
     // source.
