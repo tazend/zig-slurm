@@ -60,7 +60,7 @@ pub fn BitflagMethods(comptime T: type, comptime E: type) type {
             return try allocator.dupe(u8, result[0..bytes]);
         }
 
-        pub fn equal(a: T, b: T) bool {
+        pub fn eql(a: T, b: T) bool {
             return @as(E, @bitCast(a)) == @as(E, @bitCast(b));
         }
     };
