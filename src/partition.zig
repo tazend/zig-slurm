@@ -54,6 +54,7 @@ pub const Partition = extern struct {
     state_up: u16 = NoValue.u16,
     suspend_time: u32 = NoValue.u32,
     suspend_timeout: u16 = NoValue.u16,
+    topology_name: ?CStr = null,
     total_cpus: u32 = NoValue.u32,
     total_nodes: u32 = NoValue.u32,
     tres_fmt_str: ?CStr = null,
