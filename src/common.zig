@@ -60,6 +60,21 @@ pub fn BitflagMethods(comptime T: type, comptime E: type) type {
             return try allocator.dupe(u8, result[0..bytes]);
         }
 
+        pub fn fromSlice(items: []const []const u8) T {
+            var out: T = .{};
+
+            inline for (std.meta.fields(T)) |field| {
+                if (field.type != bool) continue;
+
+                for (items) |item| {
+                    if (std.mem.eql(u8, item, field.name)) {
+                        @field(out, field.name) = true;
+                    }
+                }
+            }
+            return out;
+        }
+
         pub fn eql(a: T, b: T) bool {
             return @as(E, @bitCast(a)) == @as(E, @bitCast(b));
         }
