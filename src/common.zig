@@ -112,6 +112,19 @@ pub fn BitflagMethods(comptime T: type, comptime E: type) type {
             return try allocator.dupe(u8, result[0..bytes]);
         }
 
+        pub fn toSlice(self: T, allocator: std.mem.Allocator) ![]const []const u8 {
+            const flag_fields = std.meta.fields(T);
+            var buf: [flag_fields.len][]const u8 = undefined;
+            var idx: usize = 0;
+            inline for (flag_fields) |field| {
+                if (field.type == bool and @field(self, field.name)) {
+                    buf[idx] = field.name;
+                    idx += 1;
+                }
+            }
+            return allocator.dupe([]const u8, buf[0..idx]);
+        }
+
         pub fn fromSlice(items: []const []const u8) T {
             var out: T = .{};
 
