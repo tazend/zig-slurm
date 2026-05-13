@@ -107,6 +107,10 @@ pub const Node = extern struct {
         weight: u32 = NoValue.u32,
     };
 
+    pub fn deinit(self: *Node) void {
+        c.slurm_free_node_info_members(self);
+    }
+
     pub const Features = struct {
         available: ?[]const u8 = null,
         active: ?[]const u8 = null,
