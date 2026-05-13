@@ -70,6 +70,7 @@ pub extern fn slurm_load_node_single(resp: ?**slurm.Node.LoadResponse, node_name
 pub extern fn slurm_update_node(*slurm.Node.Updatable) c_int;
 pub extern fn slurm_delete_node(*slurm.Node.Updatable) c_int;
 pub extern fn slurm_free_node_info_msg(node_buffer_ptr: ?*slurm.Node.LoadResponse) void;
+pub extern fn slurm_free_node_info_members(node: *slurm.Node) void;
 
 pub extern fn slurm_init_job_desc_msg(job_desc_msg: *slurm.Job.SubmitDescription) void;
 pub extern fn slurm_submit_batch_job(job_desc_msg: *slurm.Job.SubmitDescription, slurm_alloc_msg: **slurm.Job.SubmitDescription.Response) c_int;
@@ -80,6 +81,9 @@ pub extern fn slurm_free_job_info_msg(job_buffer_ptr: ?*slurm.Job.LoadResponse) 
 pub extern fn slurm_free_partition_info_msg(part_info_ptr: ?*slurm.Partition.LoadResponse) void;
 
 pub extern fn slurm_free_reservation_info_msg(resv_info_ptr: ?*slurm.Reservation.LoadResponse) void;
+pub extern fn slurm_create_reservation(resv_msg: ?*slurm.Reservation.Updatable) [*c]u8;
+pub extern fn slurm_update_reservation(resv_msg: ?*slurm.Reservation.Updatable) c_int;
+pub extern fn slurm_load_reservations(update_time: time_t, resp: ?**slurm.Reservation.LoadResponse) c_int;
 
 pub extern fn slurm_populate_node_partitions(
     node_buffer_ptr: ?*slurm.Node.LoadResponse,
@@ -112,3 +116,10 @@ pub extern fn slurm_get_job_steps(
     step_response_pptr: ?**slurm.Step.LoadResponse,
     show_flags: slurm.ShowFlags,
 ) c_int;
+
+pub extern fn slurm_free_shares_response_msg(msg: ?*slurm.db.Association.Shares.LoadResponse) void;
+pub extern fn slurm_get_statistics(buf: ?**slurm.slurmctld.Statistics, req: *slurm.slurmctld.Statistics.Request) c_int;
+pub extern fn slurm_free_stats_response_msg(msg: ?*slurm.slurmctld.Statistics) void;
+pub extern fn slurm_reconfigure() c_int;
+pub extern fn slurm_shutdown(options: u16) c_int;
+pub extern fn slurm_takeover(backup_inx: c_int) c_int;
