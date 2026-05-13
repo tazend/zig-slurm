@@ -8,6 +8,7 @@ pub const user = @import("db/user.zig");
 pub const account = @import("db/account.zig");
 pub const list = @import("db/list.zig");
 pub const tres = @import("db/tres.zig");
+pub const coordinator = @import("db/coordinator.zig");
 
 pub const List = list.List;
 pub const createCStrList = @import("db/list.zig").createCStrList;
@@ -25,6 +26,7 @@ pub const Archive = @import("db/archive.zig").Archive;
 pub const Reservation = @import("db/reservation.zig").Reservation;
 pub const QoS = @import("db/qos.zig").QoS;
 pub const Event = @import("db/event.zig").Event;
+pub const Coordinator = coordinator.Coordinator;
 
 pub extern var working_cluster_rec: ?*Cluster;
 pub extern var assoc_mgr_tres_list: ?*List(*TrackableResource);

@@ -10,7 +10,7 @@ const checkRpc = err.checkRpc;
 
 pub const Account = extern struct {
     assoc_list: ?*List(*db.Association) = null,
-    coordinators: ?*List(*opaque {}) = null,
+    coordinators: ?*List(*db.Coordinator) = null,
     description: ?CStr = null,
     flags: db.Account.Flags = .{},
     name: ?CStr = null,
