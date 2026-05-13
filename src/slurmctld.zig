@@ -301,11 +301,10 @@ pub const Statistics = extern struct {
     }
 };
 
-pub extern fn slurm_get_statistics(buf: ?**Statistics, req: *Statistics.Request) c_int;
 pub fn loadStats() Error!*Statistics {
     var data: *Statistics = undefined;
     var req: Statistics.Request = .{ .command_id = .get };
 
-    try err.checkRpc(slurm_get_statistics(&data, &req));
+    try err.checkRpc(slurm.c.slurm_get_statistics(&data, &req));
     return data;
 }
