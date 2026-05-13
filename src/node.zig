@@ -263,7 +263,9 @@ pub const Node = extern struct {
             const _bf_methods = common.BitflagMethods(State.Flags, u24);
 
             pub const toStr = _bf_methods.toStr;
-            pub const equal = _bf_methods.equal;
+            pub const jsonStringify = _bf_methods.jsonStringify;
+            pub const fromSlice = _bf_methods.fromSlice;
+            pub const toSlice = _bf_methods.toSlice;
         };
 
         pub fn toStr(self: State, allocator: std.mem.Allocator) ![:0]const u8 {
