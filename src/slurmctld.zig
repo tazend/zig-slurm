@@ -239,6 +239,10 @@ pub const Statistics = extern struct {
         };
     };
 
+    pub fn deinit(self: *Statistics) void {
+        slurm.c.slurm_free_stats_response_msg(self);
+    }
+
     pub fn bfMeanTableSize(self: *Statistics) u32 {
         return if (self.bf_cycle_counter > 0)
             self.bf_table_size_sum / self.bf_cycle_counter
