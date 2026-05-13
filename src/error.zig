@@ -1,5 +1,4 @@
 const std = @import("std");
-const CStr = @import("common.zig").CStr;
 
 const SLURM_SUCCESS: c_int = 0;
 
