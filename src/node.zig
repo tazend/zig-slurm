@@ -283,6 +283,20 @@ pub const Node = extern struct {
             return allocator.dupe([]const u8, buf[0..idx]);
         }
 
+        pub fn jsonStringify(self: *const @This(), jw: anytype) !void {
+            try jw.beginObject();
+            try jw.objectField("base");
+            var base_str: [:0]const u8 = "invalid";
+            if (@intFromEnum(self.base) < @intFromEnum(State.Base._end)) {
+                base_str = @tagName(self.base);
+            }
+            try jw.write(base_str);
+
+            try jw.objectField("flags");
+            try jw.write(self.flags);
+            try jw.endObject();
+        }
+
         pub fn toStr(self: State, allocator: std.mem.Allocator) ![:0]const u8 {
             var base_str: [:0]const u8 = "invalid";
             if (@intFromEnum(self.base) < @intFromEnum(State.Base._end)) {
