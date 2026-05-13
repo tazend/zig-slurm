@@ -13,6 +13,7 @@ const Connection = db.Connection;
 const checkRpc = @import("../error.zig").checkRpc;
 const BitString = common.BitString;
 const slurmctld = slurm.slurmctld;
+const c = slurm.c;
 
 pub const Association = extern struct {
     accounting_list: ?*List(*opaque {}) = null,
@@ -151,7 +152,9 @@ pub const Association = extern struct {
             tres_count: u32 = 0,
             tres_names: ?*CStr = null,
 
-            // TODO: deinit!
+            pub fn deinit(self: *LoadResponse) void {
+                c.slurm_free_shares_response_msg(self);
+            }
 
             pub fn iter(self: *LoadResponse) !*db.List(*Shares).Iterator {
                 return if (self.shares) |shares|
