@@ -70,13 +70,11 @@ pub fn build(b: *std.Build) !void {
         .root_source_file = b.path("src/root.zig"),
         .target = target,
         .optimize = optimize,
-        .link_libc = true,
     });
 
     const slurm_lib = b.addLibrary(.{
         .name = "slurm",
         .root_module = slurm_mod,
-        .linkage = .static,
     });
 
     setupSlurmPath(b, slurm_lib);
@@ -111,7 +109,6 @@ pub fn build(b: *std.Build) !void {
             .root_source_file = b.path("test/root.zig"),
             .optimize = optimize,
             .target = target,
-            .link_libc = true,
         }),
         .name = "test-integration",
     });
