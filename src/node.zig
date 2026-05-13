@@ -268,6 +268,21 @@ pub const Node = extern struct {
             pub const toSlice = _bf_methods.toSlice;
         };
 
+        pub fn toSlice(self: State, allocator: std.mem.Allocator) ![]const []const u8 {
+            const flag_fields = std.meta.fields(State.Flags);
+            var buf: [1 + flag_fields.len][]const u8 = undefined;
+            buf[0] = @tagName(self.base);
+
+            var idx: usize = 1;
+            inline for (flag_fields) |field| {
+                if (field.type == bool and @field(self.flags, field.name)) {
+                    buf[idx] = field.name;
+                    idx += 1;
+                }
+            }
+            return allocator.dupe([]const u8, buf[0..idx]);
+        }
+
         pub fn toStr(self: State, allocator: std.mem.Allocator) ![:0]const u8 {
             var base_str: [:0]const u8 = "invalid";
             if (@intFromEnum(self.base) < @intFromEnum(State.Base._end)) {
