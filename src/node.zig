@@ -305,7 +305,7 @@ pub fn deleteByName(names: [:0]const u8) !void {
     try delete(msg);
 }
 
-pub fn loadOne(name: [:0]const u8) Error!*Node {
+pub fn loadOne(name: [:0]const u8) Error!Node {
     var resp = try _loadNodes(.single, name);
     defer resp.deinit();
 
@@ -314,7 +314,7 @@ pub fn loadOne(name: [:0]const u8) Error!*Node {
     // This makes the deinit() above viable, because the deinit function will
     // think there are no Node records to free, since we set this to 0.
     resp.count = 0;
-    return &resp.items.?[0];
+    return resp.items.?[0];
 }
 
 pub fn load() Error!*Node.LoadResponse {
