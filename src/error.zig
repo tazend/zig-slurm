@@ -1,4 +1,3 @@
-const c = @import("c.zig").c;
 const std = @import("std");
 const CStr = @import("common.zig").CStr;
 
