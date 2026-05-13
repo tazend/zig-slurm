@@ -9,6 +9,8 @@ const NoValue = common.NoValue;
 const Infinite = common.Infinite;
 const CStr = common.CStr;
 const BitString = common.BitString;
+const err = slurm.err;
+const Error = slurm.err.Error;
 const c = @import("slurm-ext.zig");
 
 pub const Reservation = extern struct {
@@ -43,7 +45,7 @@ pub const Reservation = extern struct {
 
     pub const LoadResponse = extern struct {
         last_update: time_t,
-        record_count: u32 = 0,
+        count: u32 = 0,
         items: ?[*]Reservation = null,
 
         pub fn deinit(self: *LoadResponse) void {
@@ -84,3 +86,9 @@ pub const Reservation = extern struct {
         users: ?CStr = null,
     };
 };
+
+pub fn load() Error!*Reservation.LoadResponse {
+    var data: *Reservation.LoadResponse = undefined;
+    try err.checkRpc(c.slurm_load_reservations(0, &data));
+    return data;
+}
