@@ -20,7 +20,7 @@ pub const User = extern struct {
     def_qos_id: u32 = 0,
     default_acct: ?CStr = null,
     default_wckey: ?CStr = null,
-    flags: u32 = 0,
+    flags: db.User.Flags = .{},
     name: ?CStr = null,
     old_name: ?CStr = null,
     uid: u32 = 0,
@@ -41,6 +41,15 @@ pub const User = extern struct {
         with_deleted: u16 = 0,
         with_wckeys: u16 = 0,
         without_defaults: u16 = 0,
+    };
+
+    pub const Flags = packed struct(u32) {
+        deleted: bool = false,
+        _: u31 = 0,
+
+        const bf_methods = common.BitflagMethods(db.User.Flags, u32);
+        pub const toStr = bf_methods.toStr;
+        pub const jsonStringify = bf_methods.jsonStringify;
     };
 };
 
