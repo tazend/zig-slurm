@@ -308,3 +308,8 @@ pub fn loadStats() Error!*Statistics {
     try err.checkRpc(slurm.c.slurm_get_statistics(&data, &req));
     return data;
 }
+
+pub fn reconfigure() Error!void {
+    return err.checkRpc(slurm.c.slurm_reconfigure());
+}
+
