@@ -266,6 +266,21 @@ pub const AccountingGatherEnergy = extern struct {
     slurmd_start_time: time_t,
 };
 
+pub const DBJobFlags = packed struct(u32) {
+    scheduler: SchedulerType = .unknown,
+    start_rpc: bool = false,
+    altered: bool = false,
+
+    pub const none: DBJobFlags = @bitCast(@as(u32, 0));
+};
+
+pub const SchedulerType = enum(u4) {
+    unknown = 1,
+    submit = 2,
+    main = 4,
+    backfill = 8,
+};
+
 pub const TresType = enum(c_int) {
     cpu = 1,
     mem,
