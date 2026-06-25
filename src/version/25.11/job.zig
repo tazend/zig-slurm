@@ -13,7 +13,7 @@ const db = @import("db.zig");
 const slurm = @import("root.zig");
 const Allocator = std.mem.Allocator;
 const slurmctld = @import("slurmctld.zig");
-const JobSubmitDescription = @import("submit_desc.zig").JobSubmitDescription;
+const JobSubmitDescription = @import("jobdesc.zig").JobSubmitDescription;
 const c = slurm.c;
 
 pub const JobId = u32;
