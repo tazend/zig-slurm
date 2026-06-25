@@ -190,6 +190,31 @@ pub const JobFlags = packed struct(u64) {
     expedited_requeue: bool = false,
 };
 
+pub const PartitionFlags = packed struct(u32) {
+    default: bool = false,
+    hidden: bool = false,
+    disable_root_jobs: bool = false,
+    root_only: bool = false,
+    reservation_required: bool = false,
+    lln: bool = false,
+    exclusive_user: bool = false,
+    power_down_or_idle: bool = false,
+
+    default_clear: bool = false,
+    hidden_clear: bool = false,
+    disable_root_jobs_clear: bool = false,
+    root_only_clear: bool = false,
+    reservation_required_clear: bool = false,
+    lln_clear: bool = false,
+    exclusive_user_clear: bool = false,
+    power_down_or_idle_clear: bool = false,
+
+    exclusive_topology: bool = false,
+    exclusive_topology_clear: bool = false,
+    sched_failed: bool = false,
+    sched_cleared: bool = false,
+};
+
 pub const X11ForwardNode = packed struct(u16) {
     all: bool = false,
     batch: bool = false,
@@ -281,6 +306,47 @@ pub const SchedulerType = enum(u4) {
     backfill = 8,
 };
 
+pub const TaskDistribution = packed struct(u32) {
+    state: TaskDistribution.State,
+    _p1: u5 = 0,
+    // Bit 22
+    no_pack_nodes: bool = false,
+    pack_nodes: bool = false,
+    _p2: u9 = 0,
+
+    pub const State = enum(u16) {
+        cyclic = 1,
+        block = 2,
+        arbitrary = 3,
+        plane = 4,
+        cyclic_cyclic = 17,
+        cyclic_block = 33,
+        cyclic_cfull = 49,
+        block_cyclic = 18,
+        block_block = 34,
+        block_cfull = 50,
+        cyclic_cyclic_cyclic = 273,
+        cyclic_cyclic_block = 529,
+        cyclic_cyclic_cfull = 785,
+        cyclic_block_cyclic = 289,
+        cyclic_block_block = 545,
+        cyclic_block_cfull = 801,
+        cyclic_cfull_cyclic = 305,
+        cyclic_cfull_block = 561,
+        cyclic_cfull_cfull = 817,
+        block_cyclic_cyclic = 274,
+        block_cyclic_block = 530,
+        block_cyclic_cfull = 786,
+        block_block_cyclic = 290,
+        block_block_block = 546,
+        block_block_cfull = 802,
+        block_cfull_cyclic = 306,
+        block_cfull_block = 562,
+        block_cfull_cfull = 818,
+        unknown = 8192,
+    };
+};
+
 pub const TresType = enum(c_int) {
     cpu = 1,
     mem,
@@ -295,6 +361,8 @@ pub const TresType = enum(c_int) {
 
 pub extern fn slurm_init(conf: ?common.CStr) void;
 pub extern fn slurm_fini() void;
+
+pub extern fn gid_to_string_or_null(gid: std.c.gid_t) ?common.CStr;
 
 pub extern fn slurm_load_partitions(
     update_time: time_t,
@@ -326,6 +394,7 @@ pub extern fn slurm_free_partition_info_msg(part_info_ptr: ?*slurm.Partition.Loa
 pub extern fn slurm_free_reservation_info_msg(resv_info_ptr: ?*slurm.Reservation.LoadResponse) void;
 pub extern fn slurm_create_reservation(resv_msg: ?*slurm.Reservation.Updatable) [*c]u8;
 pub extern fn slurm_update_reservation(resv_msg: ?*slurm.Reservation.Updatable) c_int;
+//pub extern fn slurm_delete_reservation(resv_msg: [*c]reservation_name_msg_t) c_int;
 pub extern fn slurm_load_reservations(update_time: time_t, resp: ?**slurm.Reservation.LoadResponse) c_int;
 
 pub extern fn slurm_populate_node_partitions(
