@@ -1,5 +1,5 @@
-const common = @import("../common.zig");
-const slurm = @import("../root.zig");
+const common = @import("common.zig");
+const slurm = @import("root.zig");
 const std = @import("std");
 const err = slurm.err;
 const SlurmError = err.Error;
@@ -9,7 +9,7 @@ const NoValue = common.NoValue;
 const Infinite = common.Infinite;
 const CStr = common.CStr;
 const BitString = common.BitString;
-const c = @import("../slurm-ext.zig");
+const c = @import("slurm-ext.zig");
 const db = slurm.db;
 const List = db.List;
 const Allocator = std.mem.Allocator;

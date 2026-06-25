@@ -62,6 +62,17 @@ pub const buf_t = extern struct {
     processed: u32 = 0,
     mmaped: bool = false,
     shadow: bool = false,
+
+    pub const Magic = 0x42554545;
+    pub const Size = 16 * 1024;
+
+    pub fn create() buf_t {
+        return .{
+            .magic = Magic,
+            .size = Size,
+            .head = null,
+        };
+    }
 };
 
 pub const return_code_msg_t = extern struct {
@@ -159,6 +170,35 @@ pub const slurm_msg_t = extern struct {
         return msg;
     }
 };
+
+pub const MessageBuffers = extern struct {
+    header: ?*buf_t = null,
+    auth: ?*buf_t = null,
+    body: ?*buf_t = null,
+};
+
+pub const Header = extern struct {
+    version: u16,
+    flags: u16,
+    msg_type: u16,
+    body_length: u32,
+    ret_cnt: u16,
+    forward: forward_t,
+    orig_addr: slurm_addr_t,
+    ret_list: ?*List(*opaque {}),
+
+    pub fn fromMessage(msg: slurm_msg_t) Header {
+        return .{
+            .flags = msg.flags,
+            .msg_type = @intFromEnum(msg.msg_type),
+            .body_length = 0,
+            .forward = msg.forward,
+            .ret_list = @ptrCast(msg.ret_list),
+            .ret_cnt = 0,
+            .orig_addr = msg.orig_addr,
+            .version = msg.protocol_version,
+        };
+    }
 };
 
 pub extern fn slurm_free_return_code_msg(msg: *return_code_msg_t) void;
@@ -313,3 +353,10 @@ pub fn reconfigure() Error!void {
     return err.checkRpc(slurm.c.slurm_reconfigure());
 }
 
+pub const Ping = struct {
+    hostname: [:0]const u8,
+    responding: bool,
+    latency: u32,
+    offset: u8,
+    primary: bool,
+};

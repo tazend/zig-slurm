@@ -18,7 +18,7 @@ pub const Node = extern struct {
     bcast_address: ?CStr = null,
     boards: u16 = 0,
     boot_time: time_t = 0,
-    cert_flags: u16 = 0,
+    cert_flags: CertFlags,
     cert_last_renewal: time_t = 0,
     cluster_name: ?CStr = null,
     cores: u16 = 0,
@@ -42,7 +42,7 @@ pub const Node = extern struct {
     mcs_label: ?CStr = null,
     mem_spec_limit: u64 = 0,
     name: ?CStr = null,
-    next_state: u32 = 0,
+    next_state: State,
     node_addr: ?CStr = null,
     node_hostname: ?CStr = null,
     state: State,
@@ -117,10 +117,26 @@ pub const Node = extern struct {
     };
 
     pub const Host = struct {
-        address: ?[]const u8 = null,
-        name: ?[]const u8 = null,
+        address: ?[]const u8,
+        name: ?[]const u8,
+        port: u16 = 6818,
+        os: ?[]const u8,
+        architecture: ?[]const u8,
+        boot_time: time_t = 0,
     };
 
+    pub const Memory = struct {
+        real: u128 = 0,
+        free: u128 = 0,
+        idle: u128 = 0,
+        allocated: u128 = 0,
+    };
+
+    pub const CPU = struct {
+        allocated: u16 = 0,
+        effective: u16 = 0,
+        total: u16 = 0,
+        idle: u16 = 0,
     };
 
     pub const Utilization = struct {
@@ -210,6 +226,17 @@ pub const Node = extern struct {
         }
     }
 
+    pub const CertFlags = packed struct(u16) {
+        token_set: bool = false,
+        _: u15 = 0,
+
+        const _bf_methods = common.BitflagMethods(CertFlags, u16);
+        pub const toStr = _bf_methods.toStr;
+        pub const jsonStringify = _bf_methods.jsonStringify;
+        pub const fromSlice = _bf_methods.fromSlice;
+        pub const toSlice = _bf_methods.toSlice;
+    };
+
     pub const State = packed struct(u32) {
         base: Base,
         flags: Flags = .{},
@@ -234,7 +261,7 @@ pub const Node = extern struct {
         };
 
         pub const Flags = packed struct(u24) {
-            network: bool = false, // removed in 24.11
+            external: bool = false,
             reservation: bool = false,
             undrain: bool = false,
             cloud: bool = false,
@@ -286,7 +313,7 @@ pub const Node = extern struct {
         pub fn jsonStringify(self: *const @This(), jw: anytype) !void {
             try jw.beginObject();
             try jw.objectField("base");
-            var base_str: [:0]const u8 = "invalid";
+            var base_str: [:0]const u8 = "unknown";
             if (@intFromEnum(self.base) < @intFromEnum(State.Base._end)) {
                 base_str = @tagName(self.base);
             }

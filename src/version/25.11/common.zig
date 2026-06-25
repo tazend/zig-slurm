@@ -168,6 +168,20 @@ pub fn numberHasValue(val: u64) bool {
     };
 }
 
+pub fn parseInt(comptime T: type, val: T, on_noval: ?T, zero_is_noval: bool) ?T {
+    if (val == @field(NoValue, @typeName(T)) or (val == 0 and zero_is_noval)) {
+        return on_noval;
+        //    } else if (val == @field(SlurmInfinite, @typeName(T))) {
+        //        return ?;
+    } else {
+        return val;
+    }
+}
+
+pub inline fn parseU32(val: u32, zero_is_noval: bool) ?u32 {
+    return parseInt(u32, val, null, zero_is_noval);
+}
+
 test "numberHasValue" {
     try std.testing.expect(numberHasValue(10) == true);
     try std.testing.expect(numberHasValue(NoValue.u32) == false);
