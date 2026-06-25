@@ -487,6 +487,10 @@ pub const Job = extern struct {
         };
     };
 
+    pub fn isBatch(self: *const Job) bool {
+        return self.batch_flag > 0;
+    }
+
     pub const MemoryPerResource = union(enum) {
         cpu: u64,
         node: u64,
