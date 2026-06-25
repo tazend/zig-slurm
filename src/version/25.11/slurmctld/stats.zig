@@ -1,6 +1,7 @@
 const std = @import("std");
 const time_t = std.posix.time_t;
-const slurm = @import("root.zig");
+const slurm = @import("../root.zig");
+const CStr = slurm.common.CStr;
 
 pub const Statistics = extern struct {
     req_time: time_t = 0,
@@ -68,5 +69,71 @@ pub const Statistics = extern struct {
 
     pub const Request = extern struct {
         command_id: Request.Type,
+
+        pub const Type = enum(u16) {
+            reset = 0,
+            get = 1,
+        };
     };
+
+    pub fn deinit(self: *Statistics) void {
+        slurm.c.slurm_free_stats_response_msg(self);
+    }
+
+    pub fn bfMeanTableSize(self: *Statistics) u32 {
+        return if (self.bf_cycle_counter > 0)
+            self.bf_table_size_sum / self.bf_cycle_counter
+        else
+            0;
+    }
+
+    pub fn bfMeanQueueLength(self: *Statistics) u32 {
+        return if (self.bf_cycle_counter > 0)
+            self.bf_queue_len_sum / self.bf_cycle_counter
+        else
+            0;
+    }
+
+    pub fn bfCycleMeanDepthTry(self: *Statistics) u32 {
+        return if (self.bf_cycle_counter > 0)
+            self.bf_depth_try_sum / self.bf_cycle_counter
+        else
+            0;
+    }
+
+    pub fn bfCycleMeanDepth(self: *Statistics) u32 {
+        return if (self.bf_cycle_counter > 0)
+            self.bf_depth_sum / self.bf_cycle_counter
+        else
+            0;
+    }
+
+    pub fn bfCycleMean(self: *Statistics) u64 {
+        return if (self.bf_cycle_counter > 0)
+            self.bf_cycle_sum / self.bf_cycle_counter
+        else
+            0;
+    }
+
+    pub fn cyclesPerMinute(self: *Statistics) isize {
+        const ts = self.req_time - self.req_time_start;
+        return if (ts > 60)
+            return @divTrunc(self.schedule_cycle_counter, @divTrunc(ts, 60))
+        else
+            0;
+    }
+
+    pub fn meanCycle(self: *Statistics) u64 {
+        return if (self.schedule_cycle_counter > 0)
+            return self.schedule_cycle_sum / self.schedule_cycle_counter
+        else
+            0;
+    }
+
+    pub fn meanDepthCycle(self: *Statistics) u32 {
+        return if (self.schedule_cycle_counter > 0)
+            self.schedule_cycle_depth / self.schedule_cycle_counter
+        else
+            0;
+    }
 };
