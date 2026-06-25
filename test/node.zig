@@ -19,7 +19,7 @@ test "update and load" {
     {
         const updates: slurm.Node.Updatable = .{
             .extra = "my extras",
-            .node_names = "node001"
+            .names = "node001"
         };
         try slurm.node.update(updates);
 

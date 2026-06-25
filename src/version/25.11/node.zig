@@ -9,6 +9,7 @@ const Infinite = common.Infinite;
 const CStr = common.CStr;
 const slurm = @import("root.zig");
 const c = slurm.c;
+const AccountingGatherEnergy = c.AccountingGatherEnergy;
 
 pub const Node = extern struct {
     alloc_cpus: u16 = 0,
@@ -99,7 +100,7 @@ pub const Node = extern struct {
         address: ?CStr = null,
         hostname: ?CStr = null,
         names: ?CStr = null,
-        state: State = NoValue.u32,
+        state: State = .none,
         reason: ?CStr = null,
         reason_uid: u32 = 0,
         resume_after: u32 = NoValue.u32,
@@ -221,7 +222,7 @@ pub const Node = extern struct {
 
     pub fn update(self: Node, changes: *Updatable) !void {
         if (self.name) |name| {
-            changes.node_names = std.mem.span(name);
+            changes.names = std.mem.span(name);
             try slurm.node.update(changes.*);
         }
     }
@@ -243,6 +244,7 @@ pub const Node = extern struct {
         _padding1: u4 = 0,
 
         pub const empty: State = .{ .base = .unknown };
+        pub const none: State = @bitCast(@as(u32, NoValue.u32));
         pub const down: State = .{ .base = .down };
         pub const idle: State = .{ .base = .idle };
         pub const allocated: State = .{ .base = .allocated };
@@ -363,7 +365,7 @@ pub fn delete(update_msg: Node.Updatable) !void {
 }
 
 pub fn deleteByName(names: [:0]const u8) !void {
-    const msg: Node.Updatable = .{ .node_names = names };
+    const msg: Node.Updatable = .{ .names = names };
     try delete(msg);
 }
 

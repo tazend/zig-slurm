@@ -23,7 +23,7 @@ pub const Jobacctinfo = extern struct {
     user_cpu_sec: u64,
     user_cpu_usec: u32,
     act_cpufreq: u32,
-    energy: cdef.AccountingGatherEnergy,
+    energy: slurm.c.AccountingGatherEnergy,
     last_total_cputime: f64, // double
     this_sampled_cputime: f64, // double
     current_weighted_freq: u32,

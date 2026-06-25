@@ -11,6 +11,7 @@ const CStr = common.CStr;
 const BitString = common.BitString;
 const db = @import("db.zig");
 const slurm = @import("root.zig");
+const Step = slurm.Step;
 const Allocator = std.mem.Allocator;
 const slurmctld = @import("slurmctld.zig");
 const JobSubmitDescription = @import("jobdesc.zig").JobSubmitDescription;
@@ -184,6 +185,8 @@ pub const Job = extern struct {
 
     pub const SubmitDescription = JobSubmitDescription;
 
+    pub const Flags = c.JobFlags;
+
     pub const Statistics = struct {
         total_cpu_time: u64 = 0,
         user_cpu_time: u64 = 0,
@@ -199,7 +202,7 @@ pub const Job = extern struct {
 
     pub const State = packed struct(u32) {
         base: Base,
-        flags: Flags = .{},
+        flags: State.Flags = .{},
 
         pub const empty: State = .{ .base = .pending };
 

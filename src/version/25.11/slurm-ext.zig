@@ -50,7 +50,7 @@ pub const CPUBinding = packed struct(u16) {
     verbose: bool = false,
     @"type": BindType,
     one_thread_per_core: bool = false,
-    _p1: u3 = 0,
+    _p1: u2 = 0,
 
     pub const BindType = enum(u12) {
         threads = 2,
@@ -188,6 +188,7 @@ pub const JobFlags = packed struct(u64) {
     spread_segments: bool = false,
     consolidate_segments: bool = false,
     expedited_requeue: bool = false,
+    _p: u20 = 0,
 };
 
 pub const PartitionFlags = packed struct(u32) {
@@ -213,6 +214,7 @@ pub const PartitionFlags = packed struct(u32) {
     exclusive_topology_clear: bool = false,
     sched_failed: bool = false,
     sched_cleared: bool = false,
+    _p: u12 = 0,
 };
 
 pub const X11ForwardNode = packed struct(u16) {
@@ -264,6 +266,7 @@ pub const ReservationFlags = packed struct(u64) {
     no_allow_user_deletion: bool = false,
     sched_failed: bool = false,
     force_start: bool = false,
+    _p: u23 = 0,
 };
 
 pub const PreemptMode = packed struct(u16) {
@@ -277,7 +280,7 @@ pub const PreemptMode = packed struct(u16) {
     gang: bool = false,
     _p2: u8 = 0,
 
-    pub const none: PreemptMode = @bitCast(@as(u16, 0));
+    pub const none: PreemptMode = @bitCast(@as(u16, common.NoValue.u16));
 };
 
 pub const AccountingGatherEnergy = extern struct {

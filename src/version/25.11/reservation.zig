@@ -23,7 +23,7 @@ pub const Reservation = extern struct {
     core_spec: ?[*]Reservation.CoreSpec = null,
     end_time: time_t = 0,
     features: ?CStr = null,
-    flags: Reservation.Flags = 0,
+    flags: Reservation.Flags = .{},
     groups: ?CStr = null,
     licenses: ?CStr = null,
     max_start_delay: u32 = 0,
@@ -69,7 +69,7 @@ pub const Reservation = extern struct {
         duration: u32 = NoValue.u32,
         end_time: time_t = 0,
         features: ?CStr = null,
-        flags: Reservation.Flags = 0,
+        flags: Reservation.Flags = .{},
         groups: ?CStr = null,
         job_ptr: ?*anyopaque = null,
         licenses: ?CStr = null,
@@ -89,6 +89,8 @@ pub const Reservation = extern struct {
     pub const DeleteFilter = extern struct {
         name: ?CStr = null,
     };
+
+    pub const Flags = slurm.c.ReservationFlags;
 };
 
 pub fn load() Error!*Reservation.LoadResponse {

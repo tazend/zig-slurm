@@ -17,6 +17,8 @@ pub const Node = node.Node;
 pub const Partition = partition.Partition;
 pub const Reservation = reservation.Reservation;
 
+pub const List = db.List;
+
 pub const parseCStr = common.parseCStr;
 pub const parseCStrZ = common.parseCStrZ;
 pub const db = @import("db.zig");
@@ -28,6 +30,12 @@ pub const gres = @import("gres.zig");
 pub const common = @import("common.zig");
 pub const slurmctld = @import("slurmctld.zig");
 const time_t = std.os.linux.time_t;
+
+pub const SelectType = c.SelectType;
+pub const CPUBinding = c.CPUBinding;
+pub const PartitionFlags = c.PartitionFlags;
+pub const PreemptMode = c.PreemptMode;
+pub const TaskDistribution = c.TaskDistribution;
 
 pub const api_version = config.slurm_version;
 pub const slurm_allocator = SlurmAllocator.slurm_allocator;

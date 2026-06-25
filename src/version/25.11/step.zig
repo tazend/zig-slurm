@@ -11,7 +11,8 @@ const CStr = common.CStr;
 const BitString = common.BitString;
 const c = @import("slurm-ext.zig");
 const db = slurm.db;
-const List = db.List;
+const List = slurm.List;
+const Job = slurm.Job;
 const Allocator = std.mem.Allocator;
 
 pub const stat = @import("stat.zig").statStep;
@@ -48,7 +49,7 @@ pub const Step = extern struct {
     std_in: ?CStr = null,
     std_out: ?CStr = null,
     submit_line: ?CStr = null,
-    task_dist: slurm.TaskDistribution = 0,
+    task_dist: slurm.TaskDistribution,
     time_limit: u32 = 0,
     tres_bind: ?CStr = null,
     tres_fmt_alloc_str: ?CStr = null,

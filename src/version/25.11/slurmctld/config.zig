@@ -1,6 +1,8 @@
 const std = @import("std");
 const time_t = std.posix.time_t;
-const slurm = @import("root.zig");
+const slurm = @import("../root.zig");
+const CStr = slurm.common.CStr;
+const List = slurm.List;
 
 pub const Config = extern struct {
     last_update: time_t = 0,
