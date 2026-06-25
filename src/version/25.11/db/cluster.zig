@@ -10,7 +10,7 @@ const checkRpc = @import("../error.zig").checkRpc;
 const slurm_addr_t = @import("../slurmctld.zig").slurm_addr_t;
 
 pub const Cluster = extern struct {
-    accounting_list: ?*List(*opaque {}) = null,
+    accounting_list: ?*List(*Cluster.Accounting) = null,
     classification: u16 = 0,
     comm_fail_time: time_t = 0,
     control_addr: slurm_addr_t,
@@ -26,13 +26,13 @@ pub const Cluster = extern struct {
     nodes: ?CStr = null,
     root_assoc: ?*db.Association = null,
     rpc_version: u16 = @import("std").mem.zeroes(u16),
-    send_rpc: ?*List(*opaque {}) = null,
+    send_rpc: ?*List(*anyopaque) = null,
     tres_str: ?CStr = null,
 
     pub const Federation = extern struct {
-        feature_list: ?*List(*opaque {}) = null,
+        feature_list: ?*List(*anyopaque) = null,
         id: u32 = @import("std").mem.zeroes(u32),
-        name: [*c]u8 = @import("std").mem.zeroes([*c]u8),
+        name: ?CStr = @import("std").mem.zeroes([*c]u8),
         recv: ?*anyopaque = @import("std").mem.zeroes(?*anyopaque),
         send: ?*anyopaque = @import("std").mem.zeroes(?*anyopaque),
         state: u32 = @import("std").mem.zeroes(u32),
@@ -42,11 +42,11 @@ pub const Cluster = extern struct {
 
     pub const Filter = extern struct {
         classification: u16,
-        cluster_list: ?*List(*opaque {}) = null,
-        federation_list: ?*List(*opaque {}) = null,
+        cluster_list: ?*List(CStr) = null,
+        federation_list: ?*List(CStr) = null,
         flags: db.Cluster.Flags = .{},
-        format_list: ?*List(*opaque {}) = null,
-        rpc_version_list: ?*List(*opaque {}) = null,
+        format_list: ?*List(CStr) = null,
+        rpc_version_list: ?*List(CStr) = null,
         usage_end: time_t = 0,
         usage_start: time_t = 0,
         with_deleted: u16,
@@ -62,5 +62,16 @@ pub const Cluster = extern struct {
         fed: bool = false,
         ext: bool = false,
         _pad3: u19 = 0,
+    };
+
+    pub const Accounting = extern struct {
+        alloc_secs: u64 = 0,
+        down_secs: u64 = 0,
+        idle_secs: u64 = 0,
+        over_secs: u64 = 0,
+        pdown_secs: u64 = 0,
+        period_start: time_t = 0,
+        plan_secs: u64 = 0,
+        tres_rec: db.TrackableResource,
     };
 };

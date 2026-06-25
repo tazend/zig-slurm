@@ -11,8 +11,8 @@ const checkRpc = err.checkRpc;
 pub const Resource = extern struct {
     allocated: u32 = 0,
     last_consumed: u32 = 0,
-    clus_res_list: ?*List(*opaque {}) = null,
-    clus_res_rec: ?*slurmdb_clus_res_rec_t = null,
+    clus_res_list: ?*List(*Resource.Cluster) = null,
+    clus_res_rec: ?*db.Resource.Cluster = null,
     count: u32 = 0,
     description: ?CStr = @import("std").mem.zeroes([*c]u8),
     flags: u32 = 0,
@@ -24,18 +24,23 @@ pub const Resource = extern struct {
     type: u32 = 0,
 
     pub const Filter = extern struct {
-        allowed_list: ?*List(*opaque {}) = null,
-        cluster_list: ?*List(*opaque {}) = null,
-        description_list: ?*List(*opaque {}) = null,
+        allowed_list: ?*List(CStr) = null,
+        cluster_list: ?*List(CStr) = null,
+        description_list: ?*List(CStr) = null,
         flags: u32 = 0,
-        format_list: ?*List(*opaque {}) = null,
-        id_list: ?*List(*opaque {}) = null,
-        manager_list: ?*List(*opaque {}) = null,
-        name_list: ?*List(*opaque {}) = null,
-        server_list: ?*List(*opaque {}) = null,
-        type_list: ?*List(*opaque {}) = null,
+        format_list: ?*List(CStr) = null,
+        id_list: ?*List(CStr) = null,
+        manager_list: ?*List(CStr) = null,
+        name_list: ?*List(CStr) = null,
+        server_list: ?*List(CStr) = null,
+        type_list: ?*List(CStr) = null,
         with_deleted: u16 = 0,
         with_clusters: u16 = 0,
+    };
+
+    pub const Cluster = extern struct {
+        cluster: ?CStr = null,
+        allowed: u32 = 0,
     };
 };
 

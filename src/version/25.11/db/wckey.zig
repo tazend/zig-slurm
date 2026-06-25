@@ -8,7 +8,7 @@ const List = db.List;
 const Connection = db.Connection;
 
 pub const WCKey = extern struct {
-    accounting_list: ?*List(*opaque {}) = null,
+    accounting_list: ?*List(*db.Cluster.Accounting) = null,
     cluster: ?CStr = null,
     flags: u32 = 0,
     id: u32 = NoValue.u32,
@@ -19,7 +19,7 @@ pub const WCKey = extern struct {
 
     pub const Filter = extern struct {
         cluster_list: ?*List(CStr) = null,
-        format_list: ?*List(*opaque {}) = null,
+        format_list: ?*List(CStr) = null,
         id_list: ?*List(CStr) = null,
         name_list: ?*List(CStr) = null,
         only_defs: u16 = NoValue.u32,

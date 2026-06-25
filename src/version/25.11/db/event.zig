@@ -25,18 +25,18 @@ pub const Event = extern struct {
     };
 
     pub const Filter = extern struct {
-        cluster_list: ?*List(*opaque {}) = null,
+        cluster_list: ?*List(CStr) = null,
         cond_flags: Filter.Flags,
         cpus_max: u32,
         cpus_min: u32,
         event_type: db.Event.Type,
-        format_list: ?*List(*opaque {}) = null,
+        format_list: ?*List(CStr) = null,
         node_list: ?CStr = null,
         period_end: time_t = 0,
         period_start: time_t = 0,
-        reason_list: ?*List(*opaque {}) = null,
-        reason_uid_list: ?*List(*opaque {}) = null,
-        state_list: ?*List(*opaque {}) = null,
+        reason_list: ?*List(CStr) = null,
+        reason_uid_list: ?*List(CStr) = null,
+        state_list: ?*List(CStr) = null,
 
         pub const Flags = packed struct(u32) {
             only_open: bool = false,

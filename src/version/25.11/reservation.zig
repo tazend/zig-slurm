@@ -20,10 +20,10 @@ pub const Reservation = extern struct {
     comment: ?CStr = null,
     core_cnt: u32 = 0,
     core_spec_cnt: u32 = 0,
-    core_spec: ?*slurm.Reservation.CoreSpec = null,
+    core_spec: ?[*]Reservation.CoreSpec = null,
     end_time: time_t = 0,
     features: ?CStr = null,
-    flags: u64 = 0,
+    flags: Reservation.Flags = 0,
     groups: ?CStr = null,
     licenses: ?CStr = null,
     max_start_delay: u32 = 0,
@@ -69,7 +69,7 @@ pub const Reservation = extern struct {
         duration: u32 = NoValue.u32,
         end_time: time_t = 0,
         features: ?CStr = null,
-        flags: u64 = 0,
+        flags: Reservation.Flags = 0,
         groups: ?CStr = null,
         job_ptr: ?*anyopaque = null,
         licenses: ?CStr = null,
@@ -84,6 +84,10 @@ pub const Reservation = extern struct {
         time_force: time_t = 0,
         tres_str: ?CStr = null,
         users: ?CStr = null,
+    };
+
+    pub const DeleteFilter = extern struct {
+        name: ?CStr = null,
     };
 };
 

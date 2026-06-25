@@ -16,7 +16,7 @@ const slurmctld = slurm.slurmctld;
 const c = slurm.c;
 
 pub const Association = extern struct {
-    accounting_list: ?*List(*opaque {}) = null,
+    accounting_list: ?*List(*db.Cluster.Accounting) = null,
     acct: ?CStr = null,
     assoc_next: ?*db.Association = null,
     assoc_next_id: ?*db.Association = null,
@@ -56,7 +56,7 @@ pub const Association = extern struct {
     parent_id: u32 = NoValue.u32,
     partition: ?CStr = null,
     priority: u32 = NoValue.u32,
-    qos_list: ?*List(*opaque {}) = null,
+    qos_list: ?*List(CStr) = null,
     shares_raw: u32 = NoValue.u32,
     uid: u32 = NoValue.u32,
     usage: ?*db.Association.Usage = null,
@@ -104,10 +104,10 @@ pub const Association = extern struct {
 
     pub const Usage = extern struct {
         accrue_cnt: u32 = @import("std").mem.zeroes(u32),
-        children_list: ?*List(*opaque {}) = null,
+        children_list: ?*List(*db.Association) = null,
         grp_node_bitmap: ?[*]BitString = null,
-        grp_node_job_cnt: [*c]u16 = @import("std").mem.zeroes([*c]u16),
-        grp_used_tres: [*c]u64 = @import("std").mem.zeroes([*c]u64),
+        grp_node_job_cnt: ?[*]u16 = @import("std").mem.zeroes([*c]u16),
+        grp_used_tres: ?[*]u64 = @import("std").mem.zeroes([*c]u64),
         grp_used_tres_run_secs: ?[*]u64 = null,
         grp_used_wall: f64 = @import("std").mem.zeroes(f64),
         fs_factor: f64 = @import("std").mem.zeroes(f64),
@@ -202,6 +202,16 @@ pub const Association = extern struct {
     };
 
     pub const get = load;
+
+    pub const AddConditions = extern struct {
+        acct_list: ?*List(*anyopaque) = null,
+        assoc: db.Association,
+        cluster_list: ?*List(*anyopaque) = null,
+        default_acct: ?CStr = null,
+        partition_list: ?*List(*anyopaque) = null,
+        user_list: ?*List(*anyopaque) = null,
+        wckey_list: ?*List(*anyopaque) = null,
+    };
 };
 pub extern fn slurm_load_assoc_mgr_info(
     *Association.Manager.Request,

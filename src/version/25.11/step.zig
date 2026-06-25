@@ -42,13 +42,13 @@ pub const Step = extern struct {
     srun_pid: u32 = 0,
     start_time: time_t = 0,
     start_protocol_ver: u16 = 0,
-    state: slurm.Job.State,
-    step_id: ID = .{},
+    state: Job.State,
+    step_id: Step.ID = .{},
     std_err: ?CStr = null,
     std_in: ?CStr = null,
     std_out: ?CStr = null,
     submit_line: ?CStr = null,
-    task_dist: u32 = 0,
+    task_dist: slurm.TaskDistribution = 0,
     time_limit: u32 = 0,
     tres_bind: ?CStr = null,
     tres_fmt_alloc_str: ?CStr = null,
@@ -67,7 +67,7 @@ pub const Step = extern struct {
     };
 
     pub const Updatable = extern struct {
-        step_id: slurm.Step.ID = .{},
+        step_id: Step.ID = .{},
         time_limit: u32 = 0,
     };
 
@@ -75,7 +75,7 @@ pub const Step = extern struct {
         last_update: time_t,
         count: u32,
         items: ?[*]Step = null,
-        stepmgr_jobs: ?*List(*opaque {}),
+        stepmgr_jobs: ?*List(*anyopaque),
 
         extern fn slurm_free_job_step_info_response_msg(msg: ?*LoadResponse) void;
         pub fn deinit(self: *LoadResponse) void {

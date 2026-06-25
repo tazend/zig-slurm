@@ -35,7 +35,7 @@ pub const Job = extern struct {
     batch_features: ?CStr = null,
     batch_flag: u16,
     batch_host: ?CStr = null,
-    bitflags: u64,
+    bitflags: Job.Flags,
     boards_per_node: u16,
     burst_buffer: ?CStr = null,
     burst_buffer_state: ?CStr = null,
@@ -73,15 +73,15 @@ pub const Job = extern struct {
     fed_siblings_viable: u64,
     fed_siblings_viable_str: ?CStr = null,
     gres_detail_cnt: u32,
-    gres_detail_str: ?*CStr = null,
+    gres_detail_str: ?[*]?CStr = null,
     gres_total: ?CStr = null,
     group_id: u32,
     het_job_id: u32,
     het_job_id_set: ?CStr = null,
     het_job_offset: u32,
-    job_resrcs: ?*JobResources = null,
+    job_resrcs: ?*Job.Resources = null,
     job_size_str: ?CStr = null,
-    state: State,
+    state: Job.State,
     last_sched_eval: time_t,
     licenses: ?CStr = null,
     licenses_allocated: ?CStr = null,
@@ -131,7 +131,7 @@ pub const Job = extern struct {
     selinux_context: ?CStr = null,
     shared: Oversubscription,
     site_factor: u32,
-    step_id: slurm.Step.ID = .{},
+    step_id: Step.ID = .{},
     sockets_per_board: u16,
     sockets_per_node: u16,
     start_time: time_t,
@@ -682,6 +682,8 @@ pub const Job = extern struct {
     pub fn requeueHold(self: Job) SlurmError!void {
         try slurm.job.requeueHold(self.job_id);
     }
+
+    pub const Resources = opaque {};
 };
 
 pub fn cancel(id: JobId) SlurmError!void {

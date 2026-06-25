@@ -29,7 +29,7 @@ pub const Step = extern struct {
     start: time_t = 0,
     state: JobState,
     stats: db.Step.Stats = .{},
-    step_id: slurm.Step.ID,
+    step_id: Step.ID,
     stepname: ?CStr = null,
     std_err: ?CStr = null,
     std_in: ?CStr = null,
@@ -50,7 +50,7 @@ pub const Step = extern struct {
         array_bitmap: ?[*]BitString = null,
         array_task_id: u32 = NoValue.u32,
         het_job_offset: u32 = NoValue.u32,
-        step_id: slurm.Step.ID,
+        step_id: Step.ID,
     };
 
     pub const Stats = extern struct {

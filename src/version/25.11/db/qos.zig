@@ -56,7 +56,7 @@ pub const QoS = extern struct {
     min_tres_pj_ctld: ?[*]u64 = null,
     name: ?CStr = null,
     preempt_bitstr: ?[*]BitString = null,
-    preempt_list: ?*List(*opaque {}) = null,
+    preempt_list: ?*List(*anyopaque) = null,
     preempt_mode: u16,
     preempt_exempt_time: u32,
     priority: u32,
@@ -67,8 +67,8 @@ pub const QoS = extern struct {
 
     pub const Usage = extern struct {
         accrue_cnt: u32,
-        acct_limit_list: ?*List(*opaque {}) = null,
-        job_list: ?*List(*opaque {}) = null,
+        acct_limit_list: ?*List(*anyopaque) = null,
+        job_list: ?*List(*anyopaque) = null,
         grp_node_bitmap: ?[*]BitString = null,
         grp_node_job_cnt: ?[*]u16 = null,
         grp_used_jobs: u32,
@@ -80,15 +80,15 @@ pub const QoS = extern struct {
         tres_cnt: u32,
         usage_raw: c_longdouble,
         usage_tres_raw: ?*c_longdouble = null,
-        user_limit_list: ?*List(*opaque {}) = null,
+        user_limit_list: ?*List(*anyopaque) = null,
     };
 
     pub const Filter = extern struct {
-        description_list: ?*List(*opaque {}) = null,
+        description_list: ?*List(CStr) = null,
         flags: u16,
-        id_list: ?*List(*opaque {}) = null,
-        format_list: ?*List(*opaque {}) = null,
-        name_list: ?*List(*opaque {}) = null,
+        id_list: ?*List(CStr) = null,
+        format_list: ?*List(CStr) = null,
+        name_list: ?*List(CStr) = null,
         preempt_mode: u16,
     };
 };
