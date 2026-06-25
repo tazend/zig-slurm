@@ -51,7 +51,7 @@ pub const Partition = extern struct {
     priority_tier: u16 = NoValue.u16,
     qos_char: ?CStr = null,
     resume_timeout: u16 = NoValue.u16,
-    state_up: u16 = NoValue.u16,
+    state_up: Partition.State = .unknown,
     suspend_time: u32 = NoValue.u32,
     suspend_timeout: u16 = NoValue.u16,
     topology_name: ?CStr = null,
@@ -76,6 +76,14 @@ pub const Partition = extern struct {
     };
 
     pub const Updatable = Partition;
+
+    pub const State = enum(u16) {
+        inactive = 0,
+        down,
+        drain,
+        up,
+        unknown = NoValue.u16,
+    };
 };
 
 pub fn load() Error!*Partition.LoadResponse {
