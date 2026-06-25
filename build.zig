@@ -63,6 +63,7 @@ pub fn build(b: *std.Build) !void {
 
     const use_slurmfull = b.option(bool, "use-slurmfull", "Whether to use libslurmfull.so or not.") orelse false;
     const version: ?[]const u8 = b.option([]const u8, "version", "Which version of slurm to target") orelse null;
+    const bindgen_opt: bool = b.option(bool, "bindgen", "Detect that bindgen will be ran.") orelse false;
 
     const config = b.addOptions();
 
@@ -70,6 +71,7 @@ pub fn build(b: *std.Build) !void {
         .root_source_file = b.path("src/root.zig"),
         .target = target,
         .optimize = optimize,
+        .link_libc = true,
     });
 
     const slurm_lib = b.addLibrary(.{
@@ -91,6 +93,19 @@ pub fn build(b: *std.Build) !void {
     const slurm_lib_name = if (use_slurmfull) "slurmfull" else "slurm";
     slurm_lib.linkSystemLibrary(slurm_lib_name);
     b.installArtifact(slurm_lib);
+
+    if (bindgen_opt) {
+        const bindgen = b.dependency("bindgen", .{
+            .target = target,
+            .optimize = optimize,
+        });
+        const run_bindgen = b.addRunArtifact(bindgen.artifact("zig_slurm_bindgen"));
+        const bindgen_step = b.step("bindgen", "Run bindgen");
+        if (b.args) |args| {
+            run_bindgen.addArgs(args);
+        }
+        bindgen_step.dependOn(&run_bindgen.step);
+    }
 
     const tests = b.addTest(.{
         .root_module = slurm_mod,

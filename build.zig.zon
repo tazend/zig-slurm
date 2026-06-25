@@ -7,4 +7,9 @@
         "build.zig.zon",
     },
     .fingerprint = 0x759089930c814571,
+    .dependencies = .{
+        .bindgen = .{
+            .path = "vendor/bindgen",
+        },
+    },
 }
