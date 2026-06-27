@@ -11,7 +11,7 @@ const CStr = common.CStr;
 const BitString = common.BitString;
 const err = slurm.err;
 const Error = slurm.err.Error;
-const c = @import("slurm-ext.zig");
+const c = slurm.c;
 
 pub const Reservation = extern struct {
     accounts: ?CStr = null,
@@ -90,11 +90,14 @@ pub const Reservation = extern struct {
         name: ?CStr = null,
     };
 
-    pub const Flags = slurm.c.ReservationFlags;
+    pub const Flags = slurm.ReservationFlags;
 };
 
 pub fn load() Error!*Reservation.LoadResponse {
-    var data: *Reservation.LoadResponse = undefined;
-    try err.checkRpc(c.slurm_load_reservations(0, &data));
-    return data;
+    var resp: ?*Reservation.LoadResponse = null;
+    try err.checkRpc(c.slurm_load_reservations(0, &resp));
+    return if (resp) |r|
+        r
+    else
+        error.Generic;
 }

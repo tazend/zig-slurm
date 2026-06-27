@@ -91,9 +91,12 @@ pub const Partition = extern struct {
 };
 
 pub fn load() Error!*Partition.LoadResponse {
-    var data: *Partition.LoadResponse = undefined;
-    const flags: c.ShowFlags = .full;
+    var resp: ?*Partition.LoadResponse = null;
+    const flags: slurm.ShowFlags = .full;
 
-    try err.checkRpc(c.slurm_load_partitions(0, &data, flags));
-    return data;
+    try err.checkRpc(c.slurm_load_partitions(0, &resp, flags));
+    return if (resp) |r|
+        r
+    else
+        error.Generic;
 }

@@ -8,7 +8,6 @@ const NoValue = common.NoValue;
 const Infinite = common.Infinite;
 const CStr = common.CStr;
 const BitString = common.BitString;
-const cdef = @import("slurm-ext.zig");
 const db = @import("db.zig");
 const slurm = @import("root.zig");
 const Allocator = std.mem.Allocator;
@@ -55,7 +54,7 @@ pub const JobSubmitDescription = extern struct {
     dependency: ?CStr = @import("std").mem.zeroes([*c]u8),
     end_time: time_t = @import("std").mem.zeroes(time_t),
     environment: ?[*:null]?[*:0]u8 = null,
-    env_hash: c.Hash = .{},
+    env_hash: slurm.Hash = .{},
     env_size: u32 = @import("std").mem.zeroes(u32),
     exc_nodes: ?CStr = @import("std").mem.zeroes([*c]u8),
     extra: ?CStr = @import("std").mem.zeroes([*c]u8),
@@ -101,7 +100,7 @@ pub const JobSubmitDescription = extern struct {
     resv_port_cnt: u16 = @import("std").mem.zeroes(u16),
     script: ?CStr = null,
     script_buf: ?*anyopaque = @import("std").mem.zeroes(?*anyopaque),
-    script_hash: c.Hash = .{},
+    script_hash: slurm.Hash = .{},
     shared: u16 = @import("std").mem.zeroes(u16),
     site_factor: u32 = @import("std").mem.zeroes(u32),
     spank_job_env: ?[*]?CStr = null,
@@ -192,11 +191,14 @@ pub const JobSubmitDescription = extern struct {
     }
 
     pub fn submit(self: *JobSubmitDescription) SlurmError!slurm.job.JobId {
-        var resp: *JobSubmitDescription.Response = undefined;
-        defer resp.deinit();
+        var resp: ?*JobSubmitDescription.Response = null;
 
         try err.checkRpc(c.slurm_submit_batch_job(self, &resp));
-        return resp.step_id.job_id;
+
+        if (resp) |r| {
+            defer r.deinit();
+            return r.step_id.job_id;
+        } else return error.Generic;
     }
 
     pub const AllocationResponse = extern struct {

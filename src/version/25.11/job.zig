@@ -185,7 +185,7 @@ pub const Job = extern struct {
 
     pub const SubmitDescription = JobSubmitDescription;
 
-    pub const Flags = c.JobFlags;
+    pub const Flags = slurm.JobFlags;
 
     pub const Statistics = struct {
         total_cpu_time: u64 = 0,
@@ -737,26 +737,31 @@ pub fn requeue(id: JobId) SlurmError!void {
 }
 
 pub fn load() SlurmError!*Job.LoadResponse {
-    var data: *Job.LoadResponse = undefined;
-    const flags: c.ShowFlags = .full;
+    var resp: ?*Job.LoadResponse = null;
+    const flags: slurm.ShowFlags = .full;
 
-    try err.checkRpc(c.slurm_load_jobs(0, &data, flags));
-    return data;
+    try err.checkRpc(c.slurm_load_jobs(0, &resp, flags));
+    return if (resp) |r|
+        r
+    else
+        error.Generic;
 }
 
 pub fn loadOne(id: u32) SlurmError!Job {
-    var data: *Job.LoadResponse = undefined;
-    defer data.deinit();
-    const flags: c.ShowFlags = .{ .detail = true };
+    var resp: ?*Job.LoadResponse = null;
+    const flags: slurm.ShowFlags = .{ .detail = true };
 
-    try err.checkRpc(c.slurm_load_job(&data, id, flags));
+    try err.checkRpc(c.slurm_load_job(&resp, id, flags));
 
-    if (data.count != 1) return error.InvalidJobId;
+    if (resp) |r| {
+        defer r.deinit();
+        if (r.count != 1) return error.InvalidJobId;
 
-    // This makes the deinit() above viable, because the deinit function will
-    // think there are no Job records to free, since we set this to 0.
-    data.count = 0;
-    return data.items.?[0];
+        // This makes the deinit() above viable, because the deinit function will
+        // think there are no Job records to free, since we set this to 0.
+        r.count = 0;
+        return r.items.?[0];
+    } else return error.Generic;
 }
 
 pub fn getBatchScript(allocator: std.mem.Allocator, id: JobId) ![:0]const u8 {

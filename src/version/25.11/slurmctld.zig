@@ -210,11 +210,14 @@ pub extern fn slurm_msg_t_init(msg: *slurm_msg_t) void;
 
 
 pub fn loadStats() Error!*Statistics {
-    var data: *Statistics = undefined;
+    var resp: ?*Statistics = null;
     var req: Statistics.Request = .{ .command_id = .get };
 
-    try err.checkRpc(slurm.c.slurm_get_statistics(&data, &req));
-    return data;
+    try err.checkRpc(slurm.c.slurm_get_statistics(&resp, &req));
+    return if (resp) |r|
+        r
+    else
+        error.Generic;
 }
 
 pub fn reconfigure() Error!void {

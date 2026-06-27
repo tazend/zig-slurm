@@ -9,7 +9,7 @@ const Infinite = common.Infinite;
 const CStr = common.CStr;
 const slurm = @import("root.zig");
 const c = slurm.c;
-const AccountingGatherEnergy = c.AccountingGatherEnergy;
+const AccountingGatherEnergy = slurm.AccountingGatherEnergy;
 
 pub const Node = extern struct {
     alloc_cpus: u16 = 0,
@@ -391,8 +391,8 @@ const LoadMode = enum {
 };
 
 fn _loadNodes(mode: LoadMode, name: ?CStr) Error!*Node.LoadResponse {
-    var node_resp: *Node.LoadResponse = undefined;
-    var flags: c.ShowFlags = .full;
+    var node_resp: ?*Node.LoadResponse = null;
+    var flags: slurm.ShowFlags = .full;
     flags.mixed = true;
 
     switch (mode) {
@@ -400,14 +400,21 @@ fn _loadNodes(mode: LoadMode, name: ?CStr) Error!*Node.LoadResponse {
         .single => try err.checkRpc(c.slurm_load_node_single(&node_resp, name.?, flags)),
     }
 
+    // Make sure we actually have something valid.
+    const resp = if (node_resp) |nr|
+        nr
+    else
+        // TODO: Better error
+        return error.Generic;
+
     const part_resp = try slurm.partition.load();
     defer part_resp.deinit();
 
-    c.slurm_populate_node_partitions(node_resp, part_resp);
+    c.slurm_populate_node_partitions(resp, part_resp);
 
-    if (flags.mixed) _check_mixed_state(node_resp);
+    if (flags.mixed) _check_mixed_state(resp);
 
-    return node_resp;
+    return resp;
 }
 
 fn _check_mixed_state(resp: *Node.LoadResponse) void {
