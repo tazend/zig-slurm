@@ -344,6 +344,8 @@ pub const AccountingGatherEnergy = extern struct {
     slurmd_start_time: time_t,
 };
 
+pub const StepCtx = opaque {};
+
 pub const DBJobFlags = packed struct(u32) {
     scheduler: SchedulerType = .unknown,
     start_rpc: bool = false,
