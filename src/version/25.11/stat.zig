@@ -1,7 +1,6 @@
 const std = @import("std");
 const err = slurm.err;
 const common = @import("common.zig");
-const cdef = @import("slurm-ext.zig");
 const db = @import("db.zig");
 const slurm = @import("root.zig");
 const slurm_allocator = slurm.slurm_allocator;
@@ -104,7 +103,7 @@ pub extern fn jobacctinfo_aggregate(dest: *Jobacctinfo, from: *Jobacctinfo) void
 pub extern fn jobacctinfo_2_stats(stats: *db.Step.Stats, jobacct: *Jobacctinfo) void;
 pub extern fn slurmdb_ave_tres_usage(tres_string: ?CStr, tasks: u32) ?CStr; // tasks was c_int
 pub extern fn slurm_job_step_stat_response_msg_free(object: ?*anyopaque) void;
-pub extern fn slurmdb_find_tres_count_in_string(tres_str_in: ?CStr, id: cdef.TresType) u64;
+pub extern fn slurmdb_find_tres_count_in_string(tres_str_in: ?CStr, id: slurm.TresType) u64;
 pub extern fn slurmdb_free_slurmdb_stats_members(stats: *db.StepStats) void;
 
 pub extern fn slurm_job_step_stat(
@@ -196,7 +195,7 @@ pub fn statStep(allocator: std.mem.Allocator, s: *Step) anyerror!Step.Statistics
     return parseStats(&db_step, node_list, cpus, run_time, true);
 }
 
-pub fn find_tres_count(tres_str_in: ?CStr, id: cdef.TresType) u64 {
+pub fn find_tres_count(tres_str_in: ?CStr, id: slurm.TresType) u64 {
     const out: u64 = slurmdb_find_tres_count_in_string(tres_str_in, id);
     return if (out == NoValue.u64 or out == Infinite.u64)
         0

@@ -9,11 +9,11 @@ const NoValue = common.NoValue;
 const Infinite = common.Infinite;
 const CStr = common.CStr;
 const BitString = common.BitString;
-const c = @import("slurm-ext.zig");
 const db = slurm.db;
 const List = slurm.List;
 const Job = slurm.Job;
 const Allocator = std.mem.Allocator;
+const c = slurm.c;
 
 pub const stat = @import("stat.zig").statStep;
 
@@ -61,7 +61,7 @@ pub const Step = extern struct {
     user_id: u32 = 0,
 
     pub const ID = extern struct {
-        sluid: c.sluid_t = 0,
+        sluid: slurm.SluID = 0,
         job_id: u32 = 0,
         step_het_comp: u32 = 0,
         step_id: u32 = 0,
