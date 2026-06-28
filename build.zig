@@ -57,6 +57,14 @@ pub fn readSlurmVersionFile(b: *std.Build, target: *Compile) !std.SemanticVersio
     };
 }
 
+fn parseVersion(gpa: std.mem.Allocator, text: []const u8) !std.SemanticVersion {
+    const fmt = if (std.mem.count(u8, text, ".") == 1)
+        try std.fmt.allocPrint(gpa, "{s}.0", .{text})
+    else
+        text;
+    return .parse(fmt);
+}
+
 pub fn build(b: *std.Build) !void {
     const optimize = b.standardOptimizeOption(.{});
     const target = b.standardTargetOptions(.{});
@@ -82,7 +90,7 @@ pub fn build(b: *std.Build) !void {
     setupSlurmPath(b, slurm_lib);
 
     const semver: std.SemanticVersion = if (version) |v|
-        try .parse(v)
+        try parseVersion(b.allocator, v)
     else
         try readSlurmVersionFile(b, slurm_lib);
 
