@@ -24,13 +24,13 @@ pub const Partition = extern struct {
     alternate: ?CStr = null,
     billing_weights_str: ?CStr = null,
     cluster_name: ?CStr = null,
-    cr_type: slurm.SelectType,
-    cpu_bind: slurm.CPUBinding,
+    cr_type: slurm.SelectType = .{},
+    cpu_bind: slurm.CPUBinding = .{},
     def_mem_per_cpu: u64 = NoValue.u64,
     default_time: u32 = NoValue.u32,
     deny_accounts: ?CStr = null,
     deny_qos: ?CStr = null,
-    flags: slurm.PartitionFlags,
+    flags: slurm.PartitionFlags = .{},
     grace_time: u32 = NoValue.u32,
     job_defaults_list: ?*List(*JobDefaults) = null,
     job_defaults_str: ?CStr = null,
@@ -51,7 +51,7 @@ pub const Partition = extern struct {
     priority_tier: u16 = NoValue.u16,
     qos_char: ?CStr = null,
     resume_timeout: u16 = NoValue.u16,
-    state_up: Partition.State = .unknown,
+    state: Partition.State = .unknown,
     suspend_time: u32 = NoValue.u32,
     suspend_timeout: u16 = NoValue.u16,
     topology_name: ?CStr = null,
@@ -73,6 +73,16 @@ pub const Partition = extern struct {
         pub const iter = methods.iter;
         pub const get = methods.get;
         pub const toSlice = methods.toSlice;
+
+        pub fn find(self: *LoadResponse, name: [:0]const u8) ?*Partition {
+            var itr = self.iter();
+            while (itr.next()) |part| {
+                const p_name = slurm.parseCStr(part.name) orelse continue;
+                if (!std.mem.eql(u8, name, p_name)) continue;
+                return part;
+            }
+            return null;
+        }
     };
 
     pub const Updatable = Partition;
@@ -88,6 +98,25 @@ pub const Partition = extern struct {
     pub const DeleteFilter = extern struct {
         name: ?CStr = null,
     };
+
+    pub fn update(self: *Partition, changes: Updatable) !void {
+        if (self.name) |name| {
+            var msg = changes;
+            msg.name = std.mem.span(name);
+            try slurm.partition.update(msg);
+        }
+    }
+
+    pub fn create(self: Partition) !void {
+        try slurm.partition.create(self);
+    }
+
+    pub fn delete(self: *Partition) !void {
+        if (self.name) |name| {
+            const n = std.mem.span(name);
+            try slurm.partition.deleteByName(n);
+        } else return error.InvalidPartitionName;
+    }
 };
 
 pub fn load() Error!*Partition.LoadResponse {
@@ -99,4 +128,21 @@ pub fn load() Error!*Partition.LoadResponse {
         r
     else
         error.Generic;
+}
+
+pub fn update(update_msg: Partition.Updatable) !void {
+    try err.checkRpc(c.slurm_update_partition(@constCast(&update_msg)));
+}
+
+pub fn delete(filter: Partition.DeleteFilter) !void {
+    try err.checkRpc(c.slurm_delete_partition(@constCast(&filter)));
+}
+
+pub fn deleteByName(name: [:0]const u8) !void {
+    const filter: Partition.DeleteFilter = .{ .name = name };
+    try slurm.partition.delete(filter);
+}
+
+pub fn create(part: Partition.Updatable) !void {
+    try err.checkRpc(c.slurm_create_partition(@constCast(&part)));
 }
