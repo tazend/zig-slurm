@@ -1,6 +1,6 @@
 const std = @import("std");
 const gen = @import("error/gen.zig");
-const entries = gen.entries;
+pub const entries = gen.entries;
 pub const Error = gen.Error;
 
 const SLURM_SUCCESS: c_int = 0;
