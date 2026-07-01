@@ -7,4 +7,5 @@ test {
 
     _ = @import("node.zig");
     _ = @import("job.zig");
+    _ = @import("partition.zig");
 }
