@@ -55,12 +55,11 @@ pub fn build(b: *std.Build) !void {
 
     const use_slurmfull = b.option(bool, "use-slurmfull", "Whether to use libslurmfull.so or not.") orelse false;
     const version: ?[]const u8 = b.option([]const u8, "version", "Which version of slurm to target") orelse null;
-    const bindgen_opt: bool = b.option(bool, "bindgen", "Detect that bindgen will be ran.") orelse false;
+    const bindgen_opt: bool = b.option(bool, "bindgen", "Detect that bindgen will be run.") orelse false;
 
     const config = b.addOptions();
 
-    const slurm_mod = b.addModule("slurm", .{
-        .root_source_file = b.path("src/root.zig"),
+    var slurm_mod = b.addModule("slurm", .{
         .target = target,
         .optimize = optimize,
         .link_libc = true,
@@ -70,20 +69,23 @@ pub fn build(b: *std.Build) !void {
         .name = "slurm",
         .root_module = slurm_mod,
     });
+    const slurm_lib_name = if (use_slurmfull) "slurmfull" else "slurm";
+    slurm_lib.root_module.linkSystemLibrary(slurm_lib_name, .{});
 
-    setupSlurmPath(b, slurm_lib);
+    try setupSlurmPath(b, slurm_lib);
 
     const semver: std.SemanticVersion = if (version) |v|
         try parseVersion(b.allocator, v)
     else
         try readSlurmVersionFile(b, slurm_lib);
 
+    const root_file = try std.fmt.allocPrint(b.allocator, "src/version/{d}.{d}/root.zig", .{semver.major, semver.minor});
+    slurm_mod.root_source_file = b.path(root_file);
+
     // This does not work with an optional. It forgets to bring in std. Bug?
     config.addOption(std.SemanticVersion, "slurm_version", semver);
     slurm_mod.addOptions("config", config);
 
-    const slurm_lib_name = if (use_slurmfull) "slurmfull" else "slurm";
-    slurm_lib.linkSystemLibrary(slurm_lib_name);
     b.installArtifact(slurm_lib);
 
     if (bindgen_opt) {
@@ -103,9 +105,6 @@ pub fn build(b: *std.Build) !void {
         .root_module = slurm_mod,
     });
 
-    //   setupSlurmPath(b, tests);
-    //    tests.linkLibrary(slurm_lib);
-    //    tests.root_module.addImport("slurm", slurm_mod);
     const run_unit_tests = b.addRunArtifact(tests);
     const test_step = b.step("test", "Run slurm tests");
     b.installArtifact(tests);
