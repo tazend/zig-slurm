@@ -87,11 +87,12 @@ pub const SelectType = packed struct(u16) {
 
 pub const CPUBinding = packed struct(u16) {
     verbose: bool = false,
-    @"type": BindType,
+    @"type": BindType = .unknown,
     one_thread_per_core: bool = false,
     _p1: u2 = 0,
 
     pub const BindType = enum(u12) {
+        unknown = 0,
         threads = 2,
         cores = 4,
         sockets = 8,
@@ -307,6 +308,8 @@ pub const ReservationFlags = packed struct(u64) {
     sched_failed: bool = false,
     force_start: bool = false,
     _p: u23 = 0,
+
+    pub const no_value: ReservationFlags = @bitCast(@as(u64, common.NoValue.u64));
 };
 
 pub const PreemptMode = packed struct(u16) {
