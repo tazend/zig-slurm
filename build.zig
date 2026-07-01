@@ -15,41 +15,25 @@ pub fn setupSlurmPath(b: *std.Build, target: *Compile) void {
 
 pub fn readSlurmVersionFile(b: *std.Build, target: *Compile) !std.SemanticVersion {
     for (target.root_module.include_dirs.items) |i| {
-        const slurm_version_h = try i.path.join(b.allocator, "slurm_version.h");
-        var file = std.fs.openFileAbsolute(slurm_version_h.cwd_relative, .{ .mode = .read_only }) catch |err| switch(err) {
+        const slurm_version_h = try i.path.join(b.allocator, "slurm/slurm_version.h");
+        const text = b.build_root.handle.readFileAlloc(b.allocator, slurm_version_h.getPath(b), 64 * 1024) catch |err| switch(err) {
            error.FileNotFound => continue,
            else => return err,
         };
 
-        var read_buf: [4096]u8 = undefined;
-        var reader = file.reader(&read_buf);
-
-        var line: std.Io.Writer.Allocating = .init(b.allocator);
-        defer line.deinit();
-
-        while (true) {
-            _ = reader.interface.streamDelimiter(&line.writer, '\n') catch |err| switch (err) {
-                error.EndOfStream => break,
-                else => return err,
+        const needle = "#define SLURM_VERSION_NUMBER ";
+        var itr = std.mem.splitScalar(u8, text, '\n');
+        while (itr.next())  |line| {
+            if (!std.mem.startsWith(u8, line, needle)) continue;
+            const ver_str = std.mem.trimStart(u8, line, needle);
+            const ver = try std.fmt.parseInt(usize, ver_str, 0);
+            return .{
+                .major = (ver >> 16) & 0xff,
+                .minor = (ver >> 8) & 0xff,
+                .patch = ver & 0xff,
             };
-            _ = reader.interface.toss(1);
-
-            const written = line.written();
-            const needle = "#define SLURM_VERSION_NUMBER ";
-            if (std.mem.startsWith(u8, written, needle)) {
-                const ver_str = std.mem.trimStart(u8, written, needle);
-                const ver = try std.fmt.parseInt(usize, ver_str, 0);
-
-                return .{
-                    .major = (ver >> 16) & 0xff,
-                    .minor = (ver >> 8) & 0xff,
-                    .patch = ver & 0xff,
-                };
-            }
-            line.clearRetainingCapacity();
         }
     }
-
     return .{
         .major = 0,
         .minor = 0,
