@@ -1,16 +1,58 @@
 const std = @import("std");
 const Compile = std.Build.Step.Compile;
+const log = std.log.scoped(.build);
 
-pub fn setupSlurmPath(b: *std.Build, target: *Compile) void {
-    for (b.search_prefixes.items) |o| {
-        target.root_module.addLibraryPath(.{ .cwd_relative = o });
-        target.root_module.addIncludePath(.{ .cwd_relative = o });
+const PathType = enum {
+    library,
+    include,
+};
+
+fn accessSubDir(handle: *std.fs.Dir, prefix: []const u8, sub_path: []const u8) bool {
+    handle.access(sub_path, .{}) catch |err| switch(err) {
+        error.FileNotFound => return false,
+        else => |e| {
+            log.err("cannot access dir: {s}/{s}: {t}", .{ prefix, sub_path, e});
+            std.process.exit(1);
+        },
+    };
+    return true;
+}
+
+fn openPrefixDir(handle: *std.fs.Dir, path: []const u8) std.fs.Dir {
+    const dir = handle.openDir(path, .{}) catch |err| {
+        log.err("cannot open prefix dir: {s}: {t}", .{path, err});
+        std.process.exit(1);
+    };
+    return dir;
+}
+
+fn addPath(b: *std.Build, target: *Compile, dir: *std.fs.Dir, prefix: []const u8, sub_dir: []const u8, path_type: PathType) void {
+    if (accessSubDir(dir, prefix, sub_dir)) {
+        const p: std.Build.LazyPath = .{ .cwd_relative = prefix };
+        const path = p.join(b.allocator, sub_dir) catch @panic("OOM");
+
+        switch (path_type) {
+            .library => target.root_module.addLibraryPath(path),
+            .include => target.root_module.addIncludePath(path),
+        }
     }
+}
 
+fn processPrefix(b: *std.Build, target: *Compile, prefix: []const u8) void {
+    var dir = openPrefixDir(&b.build_root.handle, prefix);
+    defer dir.close();
+    addPath(b, target, &dir, prefix, "include", .include);
+    addPath(b, target, &dir, prefix, "lib64", .library);
+    addPath(b, target, &dir, prefix, "lib64/slurm", .library);
+}
+
+pub fn setupSlurmPath(b: *std.Build, target: *Compile) !void {
+    for (b.search_prefixes.items) |o| {
+        processPrefix(b, target, o);
+    }
     // Some common default include and library dirs for slurm
-    target.root_module.addIncludePath(.{ .cwd_relative = "/usr/include/slurm" });
-    target.root_module.addLibraryPath(.{ .cwd_relative = "/lib64" });
-    target.root_module.addLibraryPath(.{ .cwd_relative = "/lib64/slurm" });
+    processPrefix(b, target, "/");
+    processPrefix(b, target, "/usr");
 }
 
 pub fn readSlurmVersionFile(b: *std.Build, target: *Compile) !std.SemanticVersion {
