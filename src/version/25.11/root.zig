@@ -83,6 +83,12 @@ pub const SelectType = packed struct(u16) {
     _p2: u1 = 0,
     lln: bool = false,
     multiple_sharing_gres_pj: bool = false,
+
+    const _bf_methods = common.BitflagMethods(SelectType, u16);
+    pub const toStr = _bf_methods.toStr;
+    pub const jsonStringify = _bf_methods.jsonStringify;
+    pub const fromSlice = _bf_methods.fromSlice;
+    pub const toSlice = _bf_methods.toSlice;
 };
 
 pub fn CPUBinding(comptime T: type) type {
@@ -137,9 +143,9 @@ pub const TaskPluginParams = packed struct(u32) {
     _p1: u10 = 0,
 
     pub const AutoBinding = enum(u18) {
-        threads = 0x04000,
-        cores = 0x10000,
-        sockets = 0x20000,
+        threads = 1 << 14,
+        cores = 1 << 16,
+        sockets = 1 << 17,
     };
 };
 
@@ -173,7 +179,6 @@ pub const PriorityFlags = packed struct(u16) {
     no_normal: NoNormal,
     max_tres_gres: bool = false,
     _p1: u4 = 0,
-
 
     pub const NoNormal = packed struct(u4) {
         assoc: bool = false,
@@ -280,6 +285,12 @@ pub const PartitionFlags = packed struct(u32) {
     sched_failed: bool = false,
     sched_cleared: bool = false,
     _p: u12 = 0,
+
+    const _bf_methods = common.BitflagMethods(PartitionFlags, u32);
+    pub const toStr = _bf_methods.toStr;
+    pub const jsonStringify = _bf_methods.jsonStringify;
+    pub const fromSlice = _bf_methods.fromSlice;
+    pub const toSlice = _bf_methods.toSlice;
 };
 
 pub const X11ForwardNode = packed struct(u16) {
@@ -307,6 +318,7 @@ pub const ReservationFlags = packed struct(u64) {
     no_partition_nodes: bool = false,
     overlap: bool = false,
     specific_nodes: bool = false,
+    _p1: u1 = 0,
     time_float: bool = false,
     replace: bool = false,
     all_nodes: bool = false,
@@ -332,9 +344,15 @@ pub const ReservationFlags = packed struct(u64) {
     no_allow_user_deletion: bool = false,
     sched_failed: bool = false,
     force_start: bool = false,
-    _p: u23 = 0,
+    _p2: u22 = 0,
 
     pub const no_value: ReservationFlags = @bitCast(@as(u64, common.NoValue.u64));
+
+    const _bf_methods = common.BitflagMethods(ReservationFlags, u64);
+    pub const toStr = _bf_methods.toStr;
+    pub const jsonStringify = _bf_methods.jsonStringify;
+    pub const fromSlice = _bf_methods.fromSlice;
+    pub const toSlice = _bf_methods.toSlice;
 };
 
 pub const PreemptMode = packed struct(u16) {
@@ -343,12 +361,18 @@ pub const PreemptMode = packed struct(u16) {
     _p1: u1 = 0,
     cancel: bool = false,
     off: bool = false,
+    _p2: u8 = 0,
     priority: bool = false,
     within: bool = false,
     gang: bool = false,
-    _p2: u8 = 0,
 
     pub const none: PreemptMode = @bitCast(@as(u16, common.NoValue.u16));
+
+    const _bf_methods = common.BitflagMethods(PreemptMode, u16);
+    pub const toStr = _bf_methods.toStr;
+    pub const jsonStringify = _bf_methods.jsonStringify;
+    pub const fromSlice = _bf_methods.fromSlice;
+    pub const toSlice = _bf_methods.toSlice;
 };
 
 pub const AccountingGatherEnergy = extern struct {
@@ -365,7 +389,7 @@ pub const AccountingGatherEnergy = extern struct {
 pub const StepCtx = opaque {};
 
 pub const DBJobFlags = packed struct(u32) {
-    scheduler: SchedulerType = .unknown,
+    scheduler: SchedulerType = .unset,
     start_rpc: bool = false,
     altered: bool = false,
     _p: u26 = 0,
@@ -374,10 +398,10 @@ pub const DBJobFlags = packed struct(u32) {
 };
 
 pub const SchedulerType = enum(u4) {
-    unknown = 1,
-    submit = 2,
-    main = 4,
-    backfill = 8,
+    unset = 1 << 0,
+    submit = 1 << 1,
+    main = 1 << 2,
+    backfill = 1 << 3,
 };
 
 pub const TaskDistribution = packed struct(u32) {
