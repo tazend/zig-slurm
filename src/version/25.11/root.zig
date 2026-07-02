@@ -145,17 +145,20 @@ pub const TaskPluginParams = packed struct(u32) {
 
 pub const MemoryBinding = packed struct(u16) {
     verbose: bool = false,
-    @"type": BindType,
+    manual: Manual = .unset,
     sort: bool = false,
     prefer: bool = false, // 1 << 7
-    _p1: u7 = 0,
+    _p1: u8 = 0,
 
-    pub const BindType = enum(u6) {
-        none = 0x02,
-        rank = 0x04,
-        map = 0x08,
-        mask = 0x10,
-        local = 0x20,
+    // NOTE: These values must always start at bit 0 inside a packed struct.
+    pub const Manual = enum(u5) {
+        unset = 0,
+        none = 1 << 0,
+        rank = 1 << 1,
+        map = 1 << 2,
+        mask = 1 << 3,
+        local = 1 << 4,
+        _,
     };
 };
 
@@ -463,5 +466,33 @@ test "CPUBinding" {
         try std.testing.expectEqual(bind.auto, .ldoms);
         try std.testing.expectEqual(bind.manual, .ldmap);
         try std.testing.expectEqual(bind.one_thread_per_core, false);
+    }
+}
+
+test "MemoryBinding" {
+    const verbose = 0x01;
+    const mask = 0x10;
+    const sort = 0x40;
+    const prefer = 0x80;
+    {
+        const bind: MemoryBinding = @bitCast(@as(u16, verbose));
+        try std.testing.expectEqual(bind.verbose, true);
+        try std.testing.expectEqual(bind.manual, .unset);
+        try std.testing.expectEqual(bind.sort, false);
+        try std.testing.expectEqual(bind.prefer, false);
+    }
+    {
+        const bind: MemoryBinding = @bitCast(@as(u16, mask | verbose));
+        try std.testing.expectEqual(bind.verbose, true);
+        try std.testing.expectEqual(bind.manual, .mask);
+        try std.testing.expectEqual(bind.sort, false);
+        try std.testing.expectEqual(bind.prefer, false);
+    }
+    {
+        const bind: MemoryBinding = @bitCast(@as(u16, mask | verbose | sort | prefer));
+        try std.testing.expectEqual(bind.verbose, true);
+        try std.testing.expectEqual(bind.manual, .mask);
+        try std.testing.expectEqual(bind.sort, true);
+        try std.testing.expectEqual(bind.prefer, true);
     }
 }
