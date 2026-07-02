@@ -506,10 +506,10 @@ pub const Job = extern struct {
         const mem_tres = self.mem_per_tres;
 
         if (mem != NoValue.u64) {
-            return if ((mem & c.MEM_PER_CPU) == 0)
+            return if ((mem & slurm.MEM_PER_CPU) == 0)
                 .{ .node = mem }
             else
-                .{ .cpu = mem & (~c.MEM_PER_CPU) };
+                .{ .cpu = mem & (~slurm.MEM_PER_CPU) };
         } else if (mem_tres) |v| {
             // TODO: TRES Parser
             _ = v;
