@@ -552,25 +552,41 @@ pub const Job = extern struct {
         return try getBatchScript(allocator, self.job_id);
     }
 
-    extern fn slurm_get_job_stdout(buf: ?[*]u8, buf_size: c_int, job_ptr: *Job) void;
-    pub fn getStdOut(self: *Job) [1024:0]u8 {
-        var buf: [1024:0]u8 = std.mem.zeroes([1024:0]u8);
-        slurm_get_job_stdout(&buf, buf.len, self);
-        return buf;
+    pub fn getStdioPath(self: *Job, path: ?CStr, buf: []u8) !?[]const u8 {
+        return if (c.slurm_expand_job_stdio_fields(path, self)) |p|
+            try std.fmt.bufPrint(buf, "{s}", .{std.mem.span(p)})
+        else
+            null;
     }
 
-    extern fn slurm_get_job_stderr(buf: ?[*]u8, buf_size: c_int, job_ptr: *Job) void;
-    pub fn getStdErr(self: *Job) [1024:0]u8 {
-        var buf: [1024:0]u8 = std.mem.zeroes([1024:0]u8);
-        slurm_get_job_stderr(&buf, buf.len, self);
-        return buf;
+    pub fn stdout(self: *Job, allocator: std.mem.Allocator) ![]const u8 {
+        var buf: [std.c.PATH_MAX]u8 = undefined;
+        const path = try self.stdoutBuf(&buf);
+        return allocator.dupe(u8, path);
     }
 
-    extern fn slurm_get_job_stdin(buf: ?[*]u8, buf_size: c_int, job_ptr: *Job) void;
-    pub fn getStdIn(self: *Job) [1024:0]u8 {
-        var buf: [1024:0]u8 = std.mem.zeroes([1024:0]u8);
-        slurm_get_job_stdin(&buf, buf.len, self);
-        return buf;
+    pub fn stdoutBuf(self: *Job, buf: []u8) !?[]const u8 {
+        return self.getStdioPath(self.std_out, buf);
+    }
+
+    pub fn stderr(self: *Job, allocator: std.mem.Allocator) ![]const u8 {
+        var buf: [std.c.PATH_MAX]u8 = undefined;
+        const path = try self.stderrBuf(&buf);
+        return allocator.dupe(u8, path);
+    }
+
+    pub fn stderrBuf(self: *Job, buf: []u8) !?[]const u8 {
+        return self.getStdioPath(self.std_err, buf);
+    }
+
+    pub fn stdin(self: *Job, allocator: std.mem.Allocator) ![]const u8 {
+        var buf: [std.c.PATH_MAX]u8 = undefined;
+        const path = try self.stdinBuf(&buf);
+        return allocator.dupe(u8, path);
+    }
+
+    pub fn stdinBuf(self: *Job, buf: []u8) !?[]const u8 {
+        return self.getStdioPath(self.std_in, buf);
     }
 
     const nice_offset = 2147483648;
