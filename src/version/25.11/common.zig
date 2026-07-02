@@ -70,6 +70,12 @@ pub fn LoadResponseMethods(comptime T: type) type {
 pub fn BitflagMethods(comptime T: type, comptime E: type) type {
     return struct {
         pub fn jsonStringify(self: T, jw: anytype) !void {
+            const backing_int: E = @bitCast(self);
+            if (!slurm.common.numberHasValue(backing_int)) {
+                try jw.print("[]", .{});
+                return;
+            }
+
             try jw.beginArray();
             const fields = std.meta.fields(T);
 
