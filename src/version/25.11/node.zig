@@ -24,7 +24,7 @@ pub const Node = extern struct {
     cluster_name: ?CStr = null,
     cores: u16 = 0,
     core_spec_cnt: u16 = 0,
-    cpu_bind: u32 = 0,
+    cpu_bind: slurm.CPUBinding(u32),
     cpu_load: u32 = 0,
     free_mem: u64 = 0,
     cpus: u16 = 0,
@@ -89,7 +89,7 @@ pub const Node = extern struct {
 
     pub const Updatable = extern struct {
         comment: ?CStr = null,
-        cpu_bind: u32 = 0,
+        cpu_bind: slurm.CPUBinding(u32) = .{},
         cert_token: ?CStr = null,
         extra: ?CStr = null,
         features: ?CStr = null,

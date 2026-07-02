@@ -85,26 +85,48 @@ pub const SelectType = packed struct(u16) {
     multiple_sharing_gres_pj: bool = false,
 };
 
-pub const CPUBinding = packed struct(u16) {
-    verbose: bool = false,
-    @"type": BindType = .unknown,
-    one_thread_per_core: bool = false,
-    _p1: u2 = 0,
+pub fn CPUBinding(comptime T: type) type {
+    return packed struct(T) {
+        verbose: bool = false,
+        auto: Auto = .unset,
+        manual: Manual = .unset,
+        one_thread_per_core: bool = false,
+        _p1: switch(T) {
+            u16 => u2,
+            u32 => u18,
+            else => @compileError("Only u16 or u32 is allowed."),
+        } = 0,
 
-    pub const BindType = enum(u12) {
-        unknown = 0,
-        threads = 2,
-        cores = 4,
-        sockets = 8,
-        ldoms = 16,
-        none = 0x0020,
-        map = 0x0080,
-        mask = 0x0100,
-        ldrank = 0x0200,
-        ldmap = 0x0400,
-        ldmask = 0x0800,
+        // NOTE: These values must always start at bit 0 inside a packed struct.
+        pub const Auto = enum(u4) {
+            unset = 0,
+            threads = 1 << 0,
+            cores = 1 << 1,
+            sockets = 1 << 2,
+            ldoms = 1 << 3,
+            _,
+        };
+
+        // NOTE: These values must always start at bit 0 inside a packed struct.
+        pub const Manual = enum(u8) {
+            unset = 0,
+            none = 1 << 0,
+            // 1 << 1 was rank
+            map = 1 << 2,
+            mask = 1 << 3,
+            ldrank = 1 << 4,
+            ldmap = 1 << 5,
+            ldmask = 1 << 6,
+            _,
+        };
+
+        const _bf_methods = common.BitflagMethods(CPUBinding(T), T);
+        pub const toStr = _bf_methods.toStr;
+        pub const jsonStringify = _bf_methods.jsonStringify;
+        pub const fromSlice = _bf_methods.fromSlice;
+        pub const toSlice = _bf_methods.toSlice;
     };
-};
+}
 
 pub const TaskPluginParams = packed struct(u32) {
     auto_bind: AutoBinding,
@@ -407,3 +429,39 @@ pub const TresType = enum(c_int) {
     pages,
     static_count,
 };
+
+test "CPUBinding" {
+    const threads = 0x02;
+    const ldoms = 0x10;
+    const verbose = 0x01;
+    const ldmap = 0x400;
+    const one_thread_per_core = 0x2000;
+    {
+        const bind: CPUBinding(u32) = @bitCast(@as(u32, threads));
+        try std.testing.expectEqual(bind.verbose, false);
+        try std.testing.expectEqual(bind.auto, .threads);
+        try std.testing.expectEqual(bind.manual, .unset);
+        try std.testing.expectEqual(bind.one_thread_per_core, false);
+    }
+    {
+        const bind: CPUBinding(u32) = @bitCast(@as(u32, ldoms | verbose));
+        try std.testing.expectEqual(bind.verbose, true);
+        try std.testing.expectEqual(bind.auto, .ldoms);
+        try std.testing.expectEqual(bind.manual, .unset);
+        try std.testing.expectEqual(bind.one_thread_per_core, false);
+    }
+    {
+        const bind: CPUBinding(u32) = @bitCast(@as(u32, ldmap | verbose | one_thread_per_core));
+        try std.testing.expectEqual(bind.verbose, true);
+        try std.testing.expectEqual(bind.auto, .unset);
+        try std.testing.expectEqual(bind.manual, .ldmap);
+        try std.testing.expectEqual(bind.one_thread_per_core, true);
+    }
+    {
+        const bind: CPUBinding(u32) = @bitCast(@as(u32, ldmap | verbose | ldoms));
+        try std.testing.expectEqual(bind.verbose, true);
+        try std.testing.expectEqual(bind.auto, .ldoms);
+        try std.testing.expectEqual(bind.manual, .ldmap);
+        try std.testing.expectEqual(bind.one_thread_per_core, false);
+    }
+}
