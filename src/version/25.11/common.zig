@@ -74,8 +74,11 @@ pub fn BitflagMethods(comptime T: type, comptime E: type) type {
             const fields = std.meta.fields(T);
 
             inline for (fields) |field| {
-                if (field.type == bool and @as(field.type, @field(self, field.name))) {
+                const value = @field(self, field.name);
+                if (field.type == bool and @as(field.type, value)) {
                     try jw.write(field.name);
+                } else if (@typeInfo(field.type) == .@"enum" and @intFromEnum(value) != 0) {
+                    try jw.write(@tagName(@field(self, field.name)));
                 }
             }
             try jw.endArray();
