@@ -9,6 +9,8 @@ const db = slurm.db;
 
 pub fn List(comptime T: type) type {
     return opaque {
+        pub const ItemType: type = T;
+
         const Self = @This();
 
         const DestroyFunctionSignature = ?*const fn (object: ?T) callconv(.c) void;
