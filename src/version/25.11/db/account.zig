@@ -2,6 +2,7 @@ const std = @import("std");
 const db = @import("../db.zig");
 const common = @import("../common.zig");
 const slurm = @import("../root.zig");
+const c = slurm.c;
 const CStr = common.CStr;
 const List = db.List;
 const Connection = db.Connection;
@@ -31,15 +32,17 @@ pub const Account = extern struct {
         _pad1: u12 = 0,
         users_are_coord: bool = false,
         _pad2: u15 = 0,
+
+        const _bf_methods = common.BitflagMethods(Flags, c_uint);
+        pub const toStr = _bf_methods.toStr;
+        pub const jsonStringify = _bf_methods.jsonStringify;
+        pub const fromSlice = _bf_methods.fromSlice;
+        pub const toSlice = _bf_methods.toSlice;
     };
 };
 
-pub extern fn slurmdb_accounts_get(
-    db_conn: ?*Connection,
-    acct_cond: *Account.Filter,
-) ?*List(*Account);
 pub fn load(conn: *Connection, filter: Account.Filter) !*List(*Account) {
-    const data = slurmdb_accounts_get(conn, @constCast(&filter));
+    const data = c.slurmdb_accounts_get(conn, @constCast(&filter));
     if (data) |d| {
         return d;
     } else {
@@ -48,23 +51,13 @@ pub fn load(conn: *Connection, filter: Account.Filter) !*List(*Account) {
     }
 }
 
-pub extern fn slurmdb_accounts_add(
-    db_conn: ?*Connection,
-    acct_list: ?*List(*Account),
-) c_int;
 pub fn add(conn: *Connection, accounts: *List(*Account)) !void {
-    const rc = slurmdb_accounts_add(conn, accounts);
+    const rc = c.slurmdb_accounts_add(conn, accounts);
     try checkRpc(rc);
 }
 
-pub extern fn slurmdb_accounts_remove(
-    db_conn: ?*Connection,
-    acct_cond: *Account.Filter,
-) ?*List(CStr);
-pub const removeRaw = slurmdb_accounts_remove;
-
 pub fn remove(conn: *db.Connection, filter: db.Account.Filter) !?*List(CStr) {
-    const data = removeRaw(conn, @constCast(&filter));
+    const data = c.slurmdb_accounts_remove(conn, @constCast(&filter));
     try err.getError();
 
     return if (data) |d|
