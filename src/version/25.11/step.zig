@@ -62,9 +62,31 @@ pub const Step = extern struct {
 
     pub const ID = extern struct {
         sluid: slurm.SluID = 0,
-        job_id: u32 = 0,
-        step_het_comp: u32 = 0,
-        step_id: u32 = 0,
+        job_id: u32 = NoValue.u32,
+        step_het_comp: u32 = NoValue.u32,
+        step_id: u32 = NoValue.u32,
+
+        pub fn parseSluid(self: Step.ID, buf: *[15:0]u8) []const u8 {
+            c.print_sluid(self.sluid, buf, buf.len);
+            return buf[0..14];
+        }
+
+        pub fn toStr(self: Step.ID, allocator: Allocator) ![:0]const u8 {
+            var buf: [128]u8 = undefined;
+            const s = try self.toStrBuf(&buf);
+            return allocator.dupeZ(u8, s);
+        }
+
+        pub fn toStrBuf(self: Step.ID, buf: []u8) ![:0]const u8 {
+            const id = self.step_id;
+            return switch (id) {
+                PENDING => "pending",
+                BATCH => "batch",
+                EXTERN => "extern",
+                INTERACTIVE => "interactive",
+                else => std.fmt.bufPrintZ(buf, "{d}", .{id}),
+            };
+        }
     };
 
     pub const Updatable = extern struct {
@@ -142,17 +164,6 @@ pub const Step = extern struct {
     pub const EXTERN = 0xfffffffc;
     pub const PENDING = 0xfffffffd;
 
-    pub fn idToString(self: *Step, allocator: Allocator) ![:0]const u8 {
-        const id = self.step_id.step_id;
-        return switch (id) {
-            PENDING => "pending",
-            BATCH => "batch",
-            EXTERN => "extern",
-            INTERACTIVE => "interactive",
-            else => std.fmt.allocPrintZ(allocator, "{d}", .{id}),
-        };
-    }
-
     pub const Statistics = struct {
         consumed_energy: u64 = 0,
         elapsed_cpu_time: u64 = 0,
@@ -185,27 +196,69 @@ pub const Step = extern struct {
         user_cpu_time: u64 = 0,
         system_cpu_time: u64 = 0,
     };
+
+    pub fn getStdioPath(self: *Step, path: ?CStr, buf: []u8) !?[]const u8 {
+        return if (c.slurm_expand_step_stdio_fields(path, self)) |p|
+            try std.fmt.bufPrint(buf, "{s}", .{std.mem.span(p)})
+        else
+            null;
+    }
+
+    pub fn stdout(self: *Step, allocator: std.mem.Allocator) ![]const u8 {
+        var buf: [std.c.PATH_MAX]u8 = undefined;
+        const path = try self.stdoutBuf(&buf);
+        return allocator.dupe(u8, path);
+    }
+
+    pub fn stdoutBuf(self: *Step, buf: []u8) !?[]const u8 {
+        return self.getStdioPath(self.std_out, buf);
+    }
+
+    pub fn stderr(self: *Step, allocator: std.mem.Allocator) ![]const u8 {
+        var buf: [std.c.PATH_MAX]u8 = undefined;
+        const path = try self.stderrBuf(&buf);
+        return allocator.dupe(u8, path);
+    }
+
+    pub fn stderrBuf(self: *Step, buf: []u8) !?[]const u8 {
+        return self.getStdioPath(self.std_err, buf);
+    }
+
+    pub fn stdin(self: *Step, allocator: std.mem.Allocator) ![]const u8 {
+        var buf: [std.c.PATH_MAX]u8 = undefined;
+        const path = try self.stdinBuf(&buf);
+        return allocator.dupe(u8, path);
+    }
+
+    pub fn stdinBuf(self: *Step, buf: []u8) !?[]const u8 {
+        return self.getStdioPath(self.std_in, buf);
+    }
+
 };
 
 fn _load(job_id: ?u32) SlurmError!*Step.LoadResponse {
-    var data: *Step.LoadResponse = undefined;
+    var resp: ?*Step.LoadResponse = null;
     const flags: slurm.ShowFlags = .full;
-    const job_or_all = if (job_id) |ji| ji else common.NoValue.u32;
+    var step_id: ?Step.ID = if (job_id) |ji|
+        .{ .job_id = ji }
+    else
+        null;
 
     try err.checkRpc(c.slurm_get_job_steps(
-        0,
-        job_or_all,
-        common.NoValue.u32,
-        &data,
+        if (step_id) |*id| id else null,
+        &resp,
         flags,
     ));
-    return data;
+    return if (resp) |r|
+        r
+    else
+        error.Generic;
 }
 
 pub fn loadForJob(job_id: u32) SlurmError!*Step.LoadResponse {
     return try _load(job_id);
 }
 
-pub fn loadAll() SlurmError!*Step.LoadResponse {
+pub fn load() SlurmError!*Step.LoadResponse {
     return try _load(null);
 }
