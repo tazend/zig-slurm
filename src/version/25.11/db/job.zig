@@ -7,6 +7,7 @@ const NoValue = common.NoValue;
 const Infinite = common.Infinite;
 const time_t = std.posix.time_t;
 const slurm = @import("../root.zig");
+const c = slurm.c;
 const JobState = slurm.Job.State;
 const List = db.List;
 const Connection = db.Connection;
@@ -35,7 +36,7 @@ pub const Job = extern struct {
     exitcode: u32 = 0,
     extra: ?CStr = null,
     failed_node: ?CStr = null,
-    flags: db.Job.Flags = 0,
+    flags: db.Job.Flags = .{},
     first_step_ptr: ?*anyopaque = null,
     gid: u32 = NoValue.u32,
     het_job_id: u32 = 0,
@@ -119,8 +120,8 @@ pub const Job = extern struct {
 
         pub fn init() Filter {
             return .{
-                .accounts = .init(),
-                .user_ids = .init(),
+                .acct_list = .init(),
+                .userid_list = .init(),
             };
         }
 
@@ -138,19 +139,43 @@ pub const Job = extern struct {
 
             _padding1: u22 = 0,
 
-            const _bf_methods = common.BitflagMethods(Flags, u24);
+            const _bf_methods = common.BitflagMethods(Filter.Flags, u24);
 
             pub const toStr = _bf_methods.toStr;
             pub const eql = _bf_methods.eql;
         };
     };
+
+    pub const Flags = slurm.JobFlags;
 };
 
-pub extern fn slurmdb_jobs_get(db_conn: ?*Connection, job_cond: *Job.Filter) ?*List(*Job);
-pub fn loadJobs(conn: *Connection, filter: Job.Filter) !*List(*Job) {
-    const data = slurmdb_jobs_get(conn, @constCast(&filter));
+pub fn load(conn: *Connection, filter: Job.Filter) slurm.Error!*List(*Job) {
+    const data = c.slurmdb_jobs_get(conn, @constCast(&filter));
     if (data) |d| {
         return d;
+    } else {
+        return error.Generic;
+    }
+}
+
+pub fn loadOne(conn: *Connection, id: u32) !*Job {
+    var step: slurm.db.Step.Selected = .{
+        .step_id = .{
+            .job_id = id
+        },
+    };
+
+    var step_list: *List(*db.Step.Selected) = .initNoDestroyItems();
+    defer step_list.deinit();
+    step_list.append(&step);
+
+    var filter: Job.Filter = .{
+        .step_list = step_list,
+    };
+
+    const data = c.slurmdb_jobs_get(conn, &filter);
+    if (data) |d| {
+        return d.pop() orelse error.InvalidJobId;
     } else {
         return error.Generic;
     }
