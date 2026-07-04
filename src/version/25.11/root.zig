@@ -413,6 +413,7 @@ pub const TaskDistribution = packed struct(u32) {
     _p2: u9 = 0,
 
     pub const State = enum(u16) {
+        unset = 0,
         cyclic = 1,
         block = 2,
         arbitrary = 3,
@@ -442,7 +443,14 @@ pub const TaskDistribution = packed struct(u32) {
         block_cfull_block = 562,
         block_cfull_cfull = 818,
         unknown = 8192,
+        _,
     };
+
+    const _bf_methods = common.BitflagMethods(TaskDistribution, u32);
+    pub const toStr = _bf_methods.toStr;
+    pub const jsonStringify = _bf_methods.jsonStringify;
+    pub const fromSlice = _bf_methods.fromSlice;
+    pub const toSlice = _bf_methods.toSlice;
 };
 
 pub const TresType = enum(c_int) {
