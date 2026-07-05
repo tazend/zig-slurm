@@ -33,7 +33,7 @@ pub const Account = extern struct {
         users_are_coord: bool = false,
         _pad2: u15 = 0,
 
-        const _bf_methods = common.BitflagMethods(Flags, c_uint);
+        const _bf_methods = common.BitflagMethods(@This());
         pub const toStr = _bf_methods.toStr;
         pub const jsonStringify = _bf_methods.jsonStringify;
         pub const fromSlice = _bf_methods.fromSlice;

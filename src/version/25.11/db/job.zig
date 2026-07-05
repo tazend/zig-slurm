@@ -139,7 +139,7 @@ pub const Job = extern struct {
 
             _padding1: u22 = 0,
 
-            const _bf_methods = common.BitflagMethods(Filter.Flags, u24);
+            const _bf_methods = common.BitflagMethods(@This());
 
             pub const toStr = _bf_methods.toStr;
             pub const eql = _bf_methods.eql;

@@ -84,7 +84,7 @@ pub const SelectType = packed struct(u16) {
     lln: bool = false,
     multiple_sharing_gres_pj: bool = false,
 
-    const _bf_methods = common.BitflagMethods(SelectType, u16);
+    const _bf_methods = common.BitflagMethods(@This());
     pub const toStr = _bf_methods.toStr;
     pub const jsonStringify = _bf_methods.jsonStringify;
     pub const fromSlice = _bf_methods.fromSlice;
@@ -126,7 +126,7 @@ pub fn CPUBinding(comptime T: type) type {
             _,
         };
 
-        const _bf_methods = common.BitflagMethods(CPUBinding(T), T);
+        const _bf_methods = common.BitflagMethods(CPUBinding(T));
         pub const toStr = _bf_methods.toStr;
         pub const jsonStringify = _bf_methods.jsonStringify;
         pub const fromSlice = _bf_methods.fromSlice;
@@ -286,7 +286,7 @@ pub const PartitionFlags = packed struct(u32) {
     sched_cleared: bool = false,
     _p: u12 = 0,
 
-    const _bf_methods = common.BitflagMethods(PartitionFlags, u32);
+    const _bf_methods = common.BitflagMethods(@This());
     pub const toStr = _bf_methods.toStr;
     pub const jsonStringify = _bf_methods.jsonStringify;
     pub const fromSlice = _bf_methods.fromSlice;
@@ -348,7 +348,7 @@ pub const ReservationFlags = packed struct(u64) {
 
     pub const no_value: ReservationFlags = @bitCast(@as(u64, common.NoValue.u64));
 
-    const _bf_methods = common.BitflagMethods(ReservationFlags, u64);
+    const _bf_methods = common.BitflagMethods(@This());
     pub const toStr = _bf_methods.toStr;
     pub const jsonStringify = _bf_methods.jsonStringify;
     pub const fromSlice = _bf_methods.fromSlice;
@@ -368,7 +368,7 @@ pub const PreemptMode = packed struct(u16) {
 
     pub const none: PreemptMode = @bitCast(@as(u16, common.NoValue.u16));
 
-    const _bf_methods = common.BitflagMethods(PreemptMode, u16);
+    const _bf_methods = common.BitflagMethods(@This());
     pub const toStr = _bf_methods.toStr;
     pub const jsonStringify = _bf_methods.jsonStringify;
     pub const fromSlice = _bf_methods.fromSlice;
@@ -446,7 +446,7 @@ pub const TaskDistribution = packed struct(u32) {
         _,
     };
 
-    const _bf_methods = common.BitflagMethods(TaskDistribution, u32);
+    const _bf_methods = common.BitflagMethods(@This());
     pub const toStr = _bf_methods.toStr;
     pub const jsonStringify = _bf_methods.jsonStringify;
     pub const fromSlice = _bf_methods.fromSlice;

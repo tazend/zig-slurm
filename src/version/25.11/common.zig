@@ -67,8 +67,10 @@ pub fn LoadResponseMethods(comptime T: type) type {
     };
 }
 
-pub fn BitflagMethods(comptime T: type, comptime E: type) type {
+pub fn BitflagMethods(comptime T: type) type {
     return struct {
+        const E = @typeInfo(T).@"struct".backing_integer.?;
+
         pub fn jsonStringify(self: T, jw: anytype) !void {
             const backing_int: E = @bitCast(self);
             if (!slurm.common.numberHasValue(backing_int)) {

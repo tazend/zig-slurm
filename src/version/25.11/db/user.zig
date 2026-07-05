@@ -47,7 +47,7 @@ pub const User = extern struct {
         deleted: bool = false,
         _: u31 = 0,
 
-        const bf_methods = common.BitflagMethods(db.User.Flags, u32);
+        const bf_methods = common.BitflagMethods(@This());
         pub const toStr = bf_methods.toStr;
         pub const jsonStringify = bf_methods.jsonStringify;
     };

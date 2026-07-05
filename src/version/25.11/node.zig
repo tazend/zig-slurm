@@ -231,7 +231,7 @@ pub const Node = extern struct {
         token_set: bool = false,
         _: u15 = 0,
 
-        const _bf_methods = common.BitflagMethods(CertFlags, u16);
+        const _bf_methods = common.BitflagMethods(@This());
         pub const toStr = _bf_methods.toStr;
         pub const jsonStringify = _bf_methods.jsonStringify;
         pub const fromSlice = _bf_methods.fromSlice;
@@ -289,7 +289,7 @@ pub const Node = extern struct {
             dynamic_norm: bool = false,
             blocked: bool = false,
 
-            const _bf_methods = common.BitflagMethods(State.Flags, u24);
+            const _bf_methods = common.BitflagMethods(@This());
 
             pub const toStr = _bf_methods.toStr;
             pub const jsonStringify = _bf_methods.jsonStringify;

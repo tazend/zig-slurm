@@ -100,6 +100,12 @@ pub const Association = extern struct {
         users_are_coordinators: bool = false,
         block_add: bool = false,
         _pad2: u14 = 0,
+
+        const _bf_methods = common.BitflagMethods(@This());
+        pub const toStr = _bf_methods.toStr;
+        pub const jsonStringify = _bf_methods.jsonStringify;
+        pub const fromSlice = _bf_methods.fromSlice;
+        pub const toSlice = _bf_methods.toSlice;
     };
 
     pub const Usage = extern struct {

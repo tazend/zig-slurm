@@ -243,7 +243,7 @@ pub const Job = extern struct {
             // directly.
             __padding1: u8 = 0,
 
-            const bf_methods = common.BitflagMethods(State.Flags, u24);
+            const bf_methods = common.BitflagMethods(@This());
             pub const toStr = bf_methods.toStr;
             pub const jsonStringify = bf_methods.jsonStringify;
         };
@@ -834,7 +834,7 @@ pub const SignalFlags = packed struct(u16) {
 
     _padding1: u2 = 0,
 
-    const bf_methods = common.BitflagMethods(SignalFlags, u16);
+    const bf_methods = common.BitflagMethods(@This());
     pub const fromSlice = bf_methods.fromSlice;
 };
 
@@ -849,7 +849,7 @@ pub const ProfileTypes = packed struct(u32) {
 
     pub const all: ProfileTypes = @bitCast(@as(u32, (1 << 32) - 1));
 
-    const bf_methods = common.BitflagMethods(ProfileTypes, u32);
+    const bf_methods = common.BitflagMethods(@This());
     pub const jsonStringify = bf_methods.jsonStringify;
     pub const toStr = bf_methods.toStr;
 };
@@ -870,7 +870,7 @@ pub const MailFlags = packed struct(u16) {
 
     pub const all: MailFlags = @bitCast(@as(u16, (1 << @typeInfo(MailFlags).@"struct".fields.len - 1) - 1));
 
-    const bf_methods = common.BitflagMethods(MailFlags, u16);
+    const bf_methods = common.BitflagMethods(@This());
     pub const jsonStringify = bf_methods.jsonStringify;
     pub const toStr = bf_methods.toStr;
 };
