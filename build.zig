@@ -44,6 +44,7 @@ fn processPrefix(b: *std.Build, target: *Compile, prefix: []const u8) void {
     addPath(b, target, &dir, prefix, "include", .include);
     addPath(b, target, &dir, prefix, "lib64", .library);
     addPath(b, target, &dir, prefix, "lib64/slurm", .library);
+    addPath(b, target, &dir, prefix, "lib/slurm", .library);
 }
 
 pub fn setupSlurmPath(b: *std.Build, target: *Compile) !void {
