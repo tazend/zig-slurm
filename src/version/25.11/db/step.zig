@@ -10,6 +10,7 @@ const BitString = common.BitString;
 const time_t = std.posix.time_t;
 const List = db.List;
 const Connection = db.Connection;
+const c = slurm.c;
 
 pub const Step = extern struct {
     container: ?CStr = null,
@@ -73,4 +74,41 @@ pub const Step = extern struct {
         tres_usage_out_min_taskid: ?CStr = null,
         tres_usage_out_tot: ?CStr = null,
     };
+
+    pub fn getStdioPath(self: *Step, path: ?CStr, buf: []u8) !?[]const u8 {
+        return if (c.slurmdb_expand_step_stdio_fields(path, self)) |p|
+            try std.fmt.bufPrint(buf, "{s}", .{std.mem.span(p)})
+        else
+            null;
+    }
+
+    pub fn stdout(self: *Step, allocator: std.mem.Allocator) ![]const u8 {
+        var buf: [std.c.PATH_MAX]u8 = undefined;
+        const path = try self.stdoutBuf(&buf);
+        return allocator.dupe(u8, path);
+    }
+
+    pub fn stdoutBuf(self: *Step, buf: []u8) !?[]const u8 {
+        return self.getStdioPath(self.std_out, buf);
+    }
+
+    pub fn stderr(self: *Step, allocator: std.mem.Allocator) ![]const u8 {
+        var buf: [std.c.PATH_MAX]u8 = undefined;
+        const path = try self.stderrBuf(&buf);
+        return allocator.dupe(u8, path);
+    }
+
+    pub fn stderrBuf(self: *Step, buf: []u8) !?[]const u8 {
+        return self.getStdioPath(self.std_err, buf);
+    }
+
+    pub fn stdin(self: *Step, allocator: std.mem.Allocator) ![]const u8 {
+        var buf: [std.c.PATH_MAX]u8 = undefined;
+        const path = try self.stdinBuf(&buf);
+        return allocator.dupe(u8, path);
+    }
+
+    pub fn stdinBuf(self: *Step, buf: []u8) !?[]const u8 {
+        return self.getStdioPath(self.std_in, buf);
+    }
 };

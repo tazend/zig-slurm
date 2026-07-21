@@ -147,6 +147,43 @@ pub const Job = extern struct {
     };
 
     pub const Flags = slurm.JobFlags;
+
+    pub fn getStdioPath(self: *Job, path: ?CStr, buf: []u8) !?[]const u8 {
+        return if (c.slurmdb_expand_job_stdio_fields(path, self)) |p|
+            try std.fmt.bufPrint(buf, "{s}", .{std.mem.span(p)})
+        else
+            null;
+    }
+
+    pub fn stdout(self: *Job, allocator: std.mem.Allocator) ![]const u8 {
+        var buf: [std.c.PATH_MAX]u8 = undefined;
+        const path = try self.stdoutBuf(&buf);
+        return allocator.dupe(u8, path);
+    }
+
+    pub fn stdoutBuf(self: *Job, buf: []u8) !?[]const u8 {
+        return self.getStdioPath(self.std_out, buf);
+    }
+
+    pub fn stderr(self: *Job, allocator: std.mem.Allocator) ![]const u8 {
+        var buf: [std.c.PATH_MAX]u8 = undefined;
+        const path = try self.stderrBuf(&buf);
+        return allocator.dupe(u8, path);
+    }
+
+    pub fn stderrBuf(self: *Job, buf: []u8) !?[]const u8 {
+        return self.getStdioPath(self.std_err, buf);
+    }
+
+    pub fn stdin(self: *Job, allocator: std.mem.Allocator) ![]const u8 {
+        var buf: [std.c.PATH_MAX]u8 = undefined;
+        const path = try self.stdinBuf(&buf);
+        return allocator.dupe(u8, path);
+    }
+
+    pub fn stdinBuf(self: *Job, buf: []u8) !?[]const u8 {
+        return self.getStdioPath(self.std_in, buf);
+    }
 };
 
 pub fn load(conn: *Connection, filter: Job.Filter) slurm.Error!*List(*Job) {
