@@ -175,6 +175,7 @@ pub fn loadOne(conn: *Connection, id: u32) !*Job {
 
     const data = c.slurmdb_jobs_get(conn, &filter);
     if (data) |d| {
+        defer d.deinit();
         return d.pop() orelse error.InvalidJobId;
     } else {
         return error.Generic;
