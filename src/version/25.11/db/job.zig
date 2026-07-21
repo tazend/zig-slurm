@@ -148,6 +148,10 @@ pub const Job = extern struct {
 
     pub const Flags = slurm.JobFlags;
 
+    pub fn deinit(self: *Job) void {
+        c.slurmdb_destroy_job_rec(self);
+    }
+
     pub fn getStdioPath(self: *Job, path: ?CStr, buf: []u8) !?[]const u8 {
         return if (c.slurmdb_expand_job_stdio_fields(path, self)) |p|
             try std.fmt.bufPrint(buf, "{s}", .{std.mem.span(p)})
