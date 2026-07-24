@@ -6,6 +6,7 @@ const NoValue = common.NoValue;
 const Infinite = common.Infinite;
 const slurm = @import("../root.zig");
 const db = slurm.db;
+const c = slurm.c;
 
 pub fn List(comptime T: type) type {
     return opaque {
@@ -18,63 +19,6 @@ pub fn List(comptime T: type) type {
         pub fn noop(object: ?T) callconv(.c) void {
             _ = object;
         }
-
-        pub extern fn slurmdb_destroy_assoc_usage(object: ?*anyopaque) void;
-        pub extern fn slurmdb_destroy_bf_usage(object: ?*anyopaque) void;
-        pub extern fn slurmdb_destroy_bf_usage_members(object: ?*anyopaque) void;
-        pub extern fn slurmdb_destroy_qos_usage(object: ?*anyopaque) void;
-        pub extern fn slurmdb_destroy_user_rec(object: ?*db.User) void;
-        pub extern fn slurmdb_destroy_account_rec(object: ?*anyopaque) void;
-        pub extern fn slurmdb_destroy_coord_rec(object: ?*anyopaque) void;
-        pub extern fn slurmdb_destroy_clus_res_rec(object: ?*anyopaque) void;
-        pub extern fn slurmdb_destroy_cluster_accounting_rec(object: ?*anyopaque) void;
-        pub extern fn slurmdb_destroy_cluster_rec(object: ?*anyopaque) void;
-        pub extern fn slurmdb_destroy_federation_rec(object: ?*anyopaque) void;
-        pub extern fn slurmdb_destroy_accounting_rec(object: ?*anyopaque) void;
-        pub extern fn slurmdb_destroy_assoc_rec(object: ?*anyopaque) void;
-        pub extern fn slurmdb_destroy_event_rec(object: ?*anyopaque) void;
-        pub extern fn slurmdb_destroy_instance_rec(object: ?*anyopaque) void;
-        pub extern fn slurmdb_destroy_job_rec(object: ?*anyopaque) void;
-        pub extern fn slurmdb_destroy_qos_rec(object: ?*anyopaque) void;
-        pub extern fn slurmdb_destroy_reservation_rec(object: ?*anyopaque) void;
-        pub extern fn slurmdb_destroy_step_rec(object: ?*anyopaque) void;
-        pub extern fn slurmdb_destroy_res_rec(object: ?*anyopaque) void;
-        pub extern fn slurmdb_destroy_txn_rec(object: ?*anyopaque) void;
-        pub extern fn slurmdb_destroy_wckey_rec(object: ?*anyopaque) void;
-        pub extern fn slurmdb_destroy_archive_rec(object: ?*anyopaque) void;
-        pub extern fn slurmdb_destroy_tres_rec_noalloc(object: ?*anyopaque) void;
-        pub extern fn slurmdb_destroy_tres_rec(object: ?*anyopaque) void;
-        pub extern fn slurmdb_destroy_report_assoc_rec(object: ?*anyopaque) void;
-        pub extern fn slurmdb_destroy_report_user_rec(object: ?*anyopaque) void;
-        pub extern fn slurmdb_destroy_report_cluster_rec(object: ?*anyopaque) void;
-        pub extern fn slurmdb_destroy_user_cond(object: ?*anyopaque) void;
-        pub extern fn slurmdb_destroy_account_cond(object: ?*anyopaque) void;
-        pub extern fn slurmdb_destroy_cluster_cond(object: ?*anyopaque) void;
-        pub extern fn slurmdb_destroy_federation_cond(object: ?*anyopaque) void;
-        pub extern fn slurmdb_destroy_tres_cond(object: ?*anyopaque) void;
-        pub extern fn slurmdb_destroy_assoc_cond(object: ?*anyopaque) void;
-        pub extern fn slurmdb_destroy_event_cond(object: ?*anyopaque) void;
-        pub extern fn slurmdb_destroy_instance_cond(object: ?*anyopaque) void;
-        pub extern fn slurmdb_destroy_job_cond(object: ?*anyopaque) void;
-        pub extern fn slurmdb_destroy_job_cond_members(job_cond: *db.Job.Filter.Flags) void;
-        pub extern fn slurmdb_destroy_qos_cond(object: ?*anyopaque) void;
-        pub extern fn slurmdb_destroy_reservation_cond(object: ?*anyopaque) void;
-        pub extern fn slurmdb_destroy_res_cond(object: ?*anyopaque) void;
-        pub extern fn slurmdb_destroy_txn_cond(object: ?*anyopaque) void;
-        pub extern fn slurmdb_destroy_wckey_cond(object: ?*anyopaque) void;
-        pub extern fn slurmdb_destroy_archive_cond(object: ?*anyopaque) void;
-        pub extern fn slurmdb_destroy_add_assoc_cond(object: ?*anyopaque) void;
-        pub extern fn slurmdb_destroy_update_object(object: ?*anyopaque) void;
-        pub extern fn slurmdb_destroy_used_limits(object: ?*anyopaque) void;
-        pub extern fn slurmdb_destroy_print_tree(object: ?*anyopaque) void;
-        pub extern fn slurmdb_destroy_hierarchical_rec(object: ?*anyopaque) void;
-        pub extern fn slurmdb_destroy_report_job_grouping(object: ?*anyopaque) void;
-        pub extern fn slurmdb_destroy_report_acct_grouping(object: ?*anyopaque) void;
-        pub extern fn slurmdb_destroy_report_cluster_grouping(object: ?*anyopaque) void;
-        pub extern fn slurmdb_destroy_rpc_obj(object: ?*anyopaque) void;
-        pub extern fn slurmdb_destroy_rollup_stats(object: ?*anyopaque) void;
-        pub extern fn slurmdb_destroy_stats_rec(object: ?*anyopaque) void;
-        pub extern fn slurmdb_destroy_slurmdb_stats(stats: *db.Step.Stats) void;
 
         extern fn slurm_list_append(l: ?*List(T), x: ?T) void;
         extern fn slurm_list_is_empty(l: ?*List(T)) c_int;
@@ -89,8 +33,9 @@ pub fn List(comptime T: type) type {
         extern fn slurm_list_iterator_reset(i: ?*Iterator) void;
 
         const DestroyFunction: DestroyFunctionSignature = switch (T) {
-            *db.User => slurmdb_destroy_user_rec,
-            *db.Association => slurmdb_destroy_assoc_rec,
+            *db.User => c.slurmdb_destroy_user_rec,
+            *db.Association => c.slurmdb_destroy_assoc_rec,
+            *db.Coordinator => c.slurmdb_destroy_coord_rec,
             CStr => xfree_ptr,
             else => @compileError("List destruction not implemented for: " ++ @typeName(T)),
         };

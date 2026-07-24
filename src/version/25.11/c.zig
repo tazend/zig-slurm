@@ -9,6 +9,7 @@ pub extern fn slurm_free_shares_response_msg(msg: ?*slurm.db.Association.Shares.
 pub extern fn slurm_free_stats_response_msg(msg: ?*slurm.slurmctld.Statistics) void;
 pub extern fn gid_to_string_or_null(gid: std.c.gid_t) ?slurm.CStr;
 pub extern fn print_sluid(sluid: slurm.SluID, buffer: [*:0]u8, size: usize) void;
+pub extern fn slurmdb_job_cond_def_start_end(job_cond: ?*slurm.db.Job.Filter) void;
 
 pub extern fn slurm_strerror(errnum: c_int) ?slurm.CStr;
 pub extern fn slurm_seterrno(errnum: c_int) void;
@@ -185,9 +186,9 @@ pub extern fn slurmdb_destroy_bf_usage(object: ?*anyopaque) void;
 pub extern fn slurmdb_destroy_bf_usage_members(object: ?*anyopaque) void;
 pub extern fn slurmdb_destroy_qos_usage(object: ?*anyopaque) void;
 pub extern fn slurmdb_free_user_rec_members(slurmdb_user: ?*slurm.db.User) void;
-pub extern fn slurmdb_destroy_user_rec(object: ?*anyopaque) void;
+pub extern fn slurmdb_destroy_user_rec(object: ?*slurm.db.User) void;
 pub extern fn slurmdb_destroy_account_rec(object: ?*anyopaque) void;
-pub extern fn slurmdb_destroy_coord_rec(object: ?*anyopaque) void;
+pub extern fn slurmdb_destroy_coord_rec(object: ?*slurm.db.Coordinator) void;
 pub extern fn slurmdb_destroy_clus_res_rec(object: ?*anyopaque) void;
 pub extern fn slurmdb_destroy_cluster_accounting_rec(object: ?*anyopaque) void;
 pub extern fn slurmdb_destroy_cluster_rec(object: ?*anyopaque) void;
@@ -195,7 +196,7 @@ pub extern fn slurmdb_destroy_federation_rec(object: ?*anyopaque) void;
 pub extern fn slurmdb_destroy_accounting_rec(object: ?*anyopaque) void;
 pub extern fn slurmdb_free_assoc_mgr_state_msg(object: ?*anyopaque) void;
 pub extern fn slurmdb_free_assoc_rec_members(assoc: ?*slurm.db.Association) void;
-pub extern fn slurmdb_destroy_assoc_rec(object: ?*anyopaque) void;
+pub extern fn slurmdb_destroy_assoc_rec(object: ?*slurm.db.Association) void;
 pub extern fn slurmdb_destroy_event_rec(object: ?*anyopaque) void;
 pub extern fn slurmdb_destroy_instance_rec(object: ?*anyopaque) void;
 pub extern fn slurmdb_destroy_job_rec(object: ?*anyopaque) void;
