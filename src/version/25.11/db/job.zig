@@ -125,6 +125,10 @@ pub const Job = extern struct {
             };
         }
 
+        pub fn deinit(self: *Filter) void {
+            c.slurmdb_destroy_job_cond(self);
+        }
+
         pub const Flags = packed struct(u32) {
             duplicate: bool = false,
             no_step: bool = false,
