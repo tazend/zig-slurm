@@ -147,6 +147,7 @@ pub const Job = extern struct {
 
             pub const toStr = _bf_methods.toStr;
             pub const eql = _bf_methods.eql;
+            pub const jsonStringify = _bf_methods.jsonStringify;
         };
     };
 
