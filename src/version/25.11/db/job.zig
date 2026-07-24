@@ -199,7 +199,9 @@ pub fn load(conn: *Connection, filter: Job.Filter) slurm.Error!*List(*Job) {
     }
 }
 
-pub fn loadOne(conn: *Connection, id: u32) !*Job {
+pub fn loadOneWithFilter(conn: *Connection, id: u32, filter: Job.Filter) !*Job {
+    var f = filter;
+
     var step: slurm.db.Step.Selected = .{
         .step_id = .{
             .job_id = id
@@ -210,15 +212,13 @@ pub fn loadOne(conn: *Connection, id: u32) !*Job {
     defer step_list.deinit();
     step_list.append(&step);
 
-    var filter: Job.Filter = .{
-        .step_list = step_list,
-    };
+    f.step_list = step_list;
 
-    const data = c.slurmdb_jobs_get(conn, &filter);
-    if (data) |d| {
-        defer d.deinit();
-        return d.pop() orelse error.InvalidJobId;
-    } else {
-        return error.Generic;
-    }
+    const data = try load(conn, f);
+    defer data.deinit();
+    return data.pop() orelse error.InvalidJobId;
+}
+
+pub fn loadOne(conn: *Connection, id: u32) !*Job {
+    return try loadOneWithFilter(conn, id, .{});
 }
