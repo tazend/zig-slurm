@@ -3,6 +3,8 @@ const db = @import("../db.zig");
 const CStr = common.CStr;
 const List = db.List;
 const Connection = db.Connection;
+const slurm = @import("../root.zig");
+const c = slurm.c;
 
 pub const TrackableResource = extern struct {
     alloc_secs: u64 = 0,
@@ -23,13 +25,8 @@ pub const TrackableResource = extern struct {
     };
 };
 
-pub extern fn slurmdb_tres_get(
-    db_conn: ?*Connection,
-    tres_cond: *TrackableResource.Filter,
-) ?*List(*TrackableResource);
-
 pub fn load(conn: *Connection, filter: TrackableResource.Filter) !*List(*TrackableResource) {
-    const data = slurmdb_tres_get(conn, @constCast(&filter));
+    const data = c.slurmdb_tres_get(conn, @constCast(&filter));
     if (data) |d| {
         return d;
     } else {

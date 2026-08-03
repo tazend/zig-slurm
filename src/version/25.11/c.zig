@@ -270,7 +270,7 @@ pub extern fn slurmdb_qos_get(db_conn: ?*slurm.db.Connection, qos_cond: ?*slurm.
 pub extern fn slurmdb_qos_modify(db_conn: ?*slurm.db.Connection, qos_cond: ?*slurm.db.QoS.Filter, qos: ?*slurm.db.QoS) ?*slurm.List(*anyopaque);
 pub extern fn slurmdb_qos_remove(db_conn: ?*slurm.db.Connection, qos_cond: ?*slurm.db.QoS.Filter) ?*slurm.List(*anyopaque);
 pub extern fn slurmdb_tres_add(db_conn: ?*slurm.db.Connection, tres_list: ?*slurm.List(*anyopaque)) c_int;
-pub extern fn slurmdb_tres_get(db_conn: ?*slurm.db.Connection, tres_cond: ?*slurm.db.TrackableResource.Filter) ?*slurm.List(*anyopaque);
+pub extern fn slurmdb_tres_get(db_conn: ?*slurm.db.Connection, tres_cond: ?*slurm.db.TrackableResource.Filter) ?*slurm.List(*slurm.db.TrackableResource);
 pub extern fn slurmdb_usage_get(db_conn: ?*slurm.db.Connection, in: ?*anyopaque, @"type": c_int, start: std.posix.time_t, end: std.posix.time_t) c_int;
 pub extern fn slurmdb_usage_roll(db_conn: ?*slurm.db.Connection, sent_start: std.posix.time_t, sent_end: std.posix.time_t, archive_data: u16, rollup_stats_list_in: *?*slurm.List(*anyopaque)) c_int;
 pub extern fn slurmdb_users_add(db_conn: ?*slurm.db.Connection, user_list: ?*slurm.List(*anyopaque)) c_int;
