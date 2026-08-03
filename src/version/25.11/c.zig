@@ -266,7 +266,7 @@ pub extern fn slurmdb_res_get(db_conn: ?*slurm.db.Connection, res_cond: ?*slurm.
 pub extern fn slurmdb_res_modify(db_conn: ?*slurm.db.Connection, res_cond: ?*slurm.db.Resource.Filter, res: ?*slurm.db.Resource) ?*slurm.List(*anyopaque);
 pub extern fn slurmdb_res_remove(db_conn: ?*slurm.db.Connection, res_cond: ?*slurm.db.Resource.Filter) ?*slurm.List(*anyopaque);
 pub extern fn slurmdb_qos_add(db_conn: ?*slurm.db.Connection, qos_list: ?*slurm.List(*anyopaque)) c_int;
-pub extern fn slurmdb_qos_get(db_conn: ?*slurm.db.Connection, qos_cond: ?*slurm.db.QoS.Filter) ?*slurm.List(*anyopaque);
+pub extern fn slurmdb_qos_get(db_conn: ?*slurm.db.Connection, qos_cond: ?*slurm.db.QoS.Filter) ?*slurm.List(*slurm.db.QoS);
 pub extern fn slurmdb_qos_modify(db_conn: ?*slurm.db.Connection, qos_cond: ?*slurm.db.QoS.Filter, qos: ?*slurm.db.QoS) ?*slurm.List(*anyopaque);
 pub extern fn slurmdb_qos_remove(db_conn: ?*slurm.db.Connection, qos_cond: ?*slurm.db.QoS.Filter) ?*slurm.List(*anyopaque);
 pub extern fn slurmdb_tres_add(db_conn: ?*slurm.db.Connection, tres_list: ?*slurm.List(*anyopaque)) c_int;

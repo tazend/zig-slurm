@@ -397,6 +397,40 @@ pub const DBJobFlags = packed struct(u32) {
     pub const none: DBJobFlags = @bitCast(@as(u32, 0));
 };
 
+pub const QoSFlags = packed struct(u32) {
+    partition_min_node: bool = false,
+    partition_max_node: bool = false,
+    partition_time_limit: bool = false,
+    enforce_usage_threshold: bool = false,
+    no_reserve: bool = false,
+    reservation_required: bool = false,
+    deny_limit: bool = false,
+    override_partition_qos: bool = false,
+    no_decay: bool = false,
+    usage_factor_safe: bool = false,
+    relative: bool = false,
+
+    relative_set: bool = false,
+    partition_qos: bool = false,
+    deleted: bool = false,
+
+    _p1: u13 = 0,
+
+    unset: bool = false,
+    add: bool = false,
+    remove: bool = false,
+
+    _p2: u2 = 0,
+
+    pub const none: QoSFlags = @bitCast(@as(u32, 0));
+
+    const _bf_methods = common.BitflagMethods(@This());
+    pub const toStr = _bf_methods.toStr;
+    pub const jsonStringify = _bf_methods.jsonStringify;
+    pub const fromSlice = _bf_methods.fromSlice;
+    pub const toSlice = _bf_methods.toSlice;
+};
+
 pub const SchedulerType = enum(u4) {
     unset = 1 << 0,
     submit = 1 << 1,

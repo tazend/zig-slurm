@@ -2,22 +2,20 @@ const std = @import("std");
 const db = @import("../db.zig");
 const common = @import("../common.zig");
 const CStr = common.CStr;
-const xfree_ptr = @import("../SlurmAllocator.zig").slurm_xfree_ptr;
 const NoValue = common.NoValue;
 const Infinite = common.Infinite;
 const time_t = std.posix.time_t;
 const slurm = @import("../root.zig");
-const JobState = slurm.Job.State;
-const List = db.List;
+const List = slurm.List;
 const Connection = db.Connection;
-const checkRpc = @import("../error.zig").checkRpc;
 const BitString = common.BitString;
+const c = slurm.c;
 
 pub const QoS = extern struct {
     blocked_until: time_t = 0,
     description: ?CStr = null,
     id: u32,
-    flags: u32,
+    flags: slurm.QoSFlags = .{},
     grace_time: u32,
     grp_jobs_accrue: u32,
     grp_jobs: u32,
@@ -57,7 +55,7 @@ pub const QoS = extern struct {
     name: ?CStr = null,
     preempt_bitstr: ?[*]BitString = null,
     preempt_list: ?*List(*anyopaque) = null,
-    preempt_mode: u16,
+    preempt_mode: slurm.PreemptMode = .none,
     preempt_exempt_time: u32,
     priority: u32,
     relative_tres_cnt: ?[*]u64 = null,
@@ -85,10 +83,20 @@ pub const QoS = extern struct {
 
     pub const Filter = extern struct {
         description_list: ?*List(CStr) = null,
-        flags: u16,
+        flags: slurm.QoSFlags = .{},
         id_list: ?*List(CStr) = null,
         format_list: ?*List(CStr) = null,
         name_list: ?*List(CStr) = null,
-        preempt_mode: u16,
+        preempt_mode: slurm.PreemptMode = .none,
     };
 };
+
+pub fn load(conn: *Connection, filter: QoS.Filter) !*List(*QoS) {
+    const data = c.slurmdb_qos_get(conn, @constCast(&filter));
+    if (data) |d| {
+        return d;
+    } else {
+        // TODO: Better error, this is just temporary.
+        return error.Generic;
+    }
+}
