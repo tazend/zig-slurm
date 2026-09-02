@@ -3,6 +3,8 @@ const time_t = std.posix.time_t;
 const slurm = @import("../root.zig");
 const CStr = slurm.common.CStr;
 const List = slurm.List;
+const err = slurm.err;
+const Error = slurm.Error;
 
 pub const Config = extern struct {
     last_update: time_t = 0,
@@ -237,4 +239,19 @@ pub const Config = extern struct {
     vsize_factor: u16 = 0,
     wait_time: u16 = 0,
     x11_params: ?CStr = null,
+
+    pub fn load() Error!*Config {
+        var resp: ?*Config = null;
+        const rc = slurm.c.slurm_load_ctl_conf(0, &resp);
+        try err.checkRpc(rc);
+
+        return if (resp) |r|
+            r
+        else
+            error.Generic;
+    }
+
+    pub fn deinit(self: *Config) void {
+        slurm.c.slurm_free_ctl_conf(self);
+    }
 };
