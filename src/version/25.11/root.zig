@@ -17,6 +17,7 @@ pub const node = @import("node.zig");
 pub const step = @import("step.zig");
 pub const partition = @import("partition.zig");
 pub const reservation = @import("reservation.zig");
+pub const license = @import("license.zig");
 pub const trigger = @import("trigger.zig");
 pub const db = @import("db.zig");
 
@@ -26,6 +27,7 @@ pub const Step = step.Step;
 pub const Node = node.Node;
 pub const Partition = partition.Partition;
 pub const Reservation = reservation.Reservation;
+pub const License = license.License;
 pub const Trigger = trigger.Trigger;
 
 pub const List = db.List;

@@ -9,5 +9,6 @@ test {
     _ = @import("job.zig");
     _ = @import("partition.zig");
     _ = @import("reservation.zig");
+    _ = @import("license.zig");
     _ = @import("trigger.zig");
 }
