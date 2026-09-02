@@ -32,10 +32,13 @@ test "create and delete" {
 }
 
 test "update and load" {
+    const expected_allow_groups = "root";
+    const expected_allow_accounts = "slurm";
+
     {
         const updates: slurm.Partition.Updatable = .{
             .state = .down,
-            .allow_groups = "root",
+            .allow_groups = expected_allow_groups,
             .name = "normal",
         };
         try slurm.partition.update(updates);
@@ -43,8 +46,8 @@ test "update and load" {
         var resp = try slurm.partition.load();
         const part = resp.find("normal") orelse return error.InvalidPartition;
 
-        const deny_accounts = slurm.parseCStr(part.deny_accounts);
-        try testing.expectEqualStrings(deny_accounts.?, "root");
+        const allow_groups = slurm.parseCStr(part.allow_groups);
+        try testing.expectEqualStrings(allow_groups.?, expected_allow_groups);
         try testing.expect(part.state == .down);
     }
     {
@@ -52,7 +55,7 @@ test "update and load" {
         const part = resp.find("normal") orelse return error.InvalidPartition;
 
         const updates: slurm.Partition.Updatable = .{
-            .allow_accounts = "slurm",
+            .allow_accounts = expected_allow_accounts,
             .state = .up,
         };
         try part.update(updates);
@@ -62,7 +65,7 @@ test "update and load" {
         const part = resp.find("normal") orelse return error.InvalidPartition;
 
         const allow_accounts = slurm.parseCStr(part.allow_accounts);
-        try testing.expectEqualStrings(allow_accounts.?, "slurm");
+        try testing.expectEqualStrings(allow_accounts.?, expected_allow_accounts);
         try testing.expect(part.state == .up);
     }
 }
