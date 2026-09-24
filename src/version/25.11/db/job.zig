@@ -2,7 +2,6 @@ const std = @import("std");
 const db = @import("../db.zig");
 const common = @import("../common.zig");
 const CStr = common.CStr;
-const xfree_ptr = @import("../SlurmAllocator.zig").slurm_xfree_ptr;
 const NoValue = common.NoValue;
 const Infinite = common.Infinite;
 const time_t = std.posix.time_t;
@@ -194,6 +193,15 @@ pub const Job = extern struct {
         return self.getStdioPath(self.std_in, buf);
     }
 };
+
+pub fn modify(conn: *Connection, filter: *const Job.Filter, changes: *const Job) slurm.Error!*List(CStr) {
+    const data = c.slurmdb_job_modify(conn, @constCast(filter), @constCast(changes));
+    if (data) |d| {
+        return d;
+    } else {
+        return error.Generic;
+    }
+}
 
 pub fn load(conn: *Connection, filter: Job.Filter) slurm.Error!*List(*Job) {
     const data = c.slurmdb_jobs_get(conn, @constCast(&filter));
