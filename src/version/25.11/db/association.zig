@@ -14,6 +14,7 @@ const checkRpc = @import("../error.zig").checkRpc;
 const BitString = common.BitString;
 const slurmctld = slurm.slurmctld;
 const c = slurm.c;
+const LockLevel = slurm.LockLevel;
 
 pub const Association = extern struct {
     accounting_list: ?*List(*db.Cluster.Accounting) = null,
@@ -184,6 +185,16 @@ pub const Association = extern struct {
     };
 
     pub const Manager = struct {
+        pub const Locks = extern struct {
+            assoc: LockLevel = .no_lock,
+            file: LockLevel = .no_lock,
+            qos: LockLevel = .no_lock,
+            res: LockLevel = .no_lock,
+            tres: LockLevel = .no_lock,
+            user: LockLevel = .no_lock,
+            wckey: LockLevel = .no_lock,
+        };
+
         pub const LoadResponse = extern struct {
             assoc_list: ?*List(*Association) = null,
             qos_list: ?*List(*db.QoS) = null,
@@ -205,6 +216,10 @@ pub const Association = extern struct {
                 _: u29 = 0,
             };
         };
+
+        pub const lock = slurm.c.assoc_mgr_lock;
+        pub const unlock = slurm.c.assoc_mgr_unlock;
+        pub const postTRESList = slurm.c.assoc_mgr_post_tres_list;
     };
 
     pub const get = load;

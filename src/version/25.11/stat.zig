@@ -11,18 +11,22 @@ const Infinite = common.Infinite;
 const CStr = common.CStr;
 const Allocator = std.mem.Allocator;
 const Step = slurm.Step;
-const Job = slurm.Job;
+const AssociationManager = slurm.db.Association.Manager;
+const AssociationManagerLocks = AssociationManager.Locks;
+const c = slurm.c;
 
 pub const stepd_step_rec_t = opaque {};
 
-pub const Jobacctinfo = extern struct {
+pub const StatError = SlurmError || error{OutOfMemory};
+
+pub const InternalJobAccounting = extern struct {
     pid: std.posix.pid_t,
     sys_cpu_sec: u64,
     sys_cpu_usec: u32,
     user_cpu_sec: u64,
     user_cpu_usec: u32,
     act_cpufreq: u32,
-    energy: slurm.c.AccountingGatherEnergy,
+    energy: slurm.AccountingGatherEnergy,
     last_total_cputime: f64, // double
     this_sampled_cputime: f64, // double
     current_weighted_freq: u32,
@@ -30,163 +34,130 @@ pub const Jobacctinfo = extern struct {
     tres_count: u32,
     tres_ids: [*]u32,
     tres_list: ?*db.List(*db.TrackableResource),
-    tres_usage_in_max: u64,
-    tres_usage_in_max_nodeid: u64,
-    tres_usage_in_max_taskid: u64,
-    tres_usage_in_min: u64,
-    tres_usage_in_min_nodeid: u64,
-    tres_usage_in_min_taskid: u64,
-    tres_usage_in_tot: u64,
-    tres_usage_out_max: u64,
-    tres_usage_out_max_nodeid: u64,
-    tres_usage_out_max_taskid: u64,
-    tres_usage_out_min: u64,
-    tres_usage_out_min_nodeid: u64,
-    tres_usage_out_min_taskid: u64,
-    tres_usage_out_tot: u64,
+    tres_usage_in_max: [*]u64,
+    tres_usage_in_max_nodeid: [*]u64,
+    tres_usage_in_max_taskid: [*]u64,
+    tres_usage_in_min: [*]u64,
+    tres_usage_in_min_nodeid: [*]u64,
+    tres_usage_in_min_taskid: [*]u64,
+    tres_usage_in_tot: [*]u64,
+    tres_usage_out_max: [*]u64,
+    tres_usage_out_max_nodeid: [*]u64,
+    tres_usage_out_max_taskid: [*]u64,
+    tres_usage_out_min: [*]u64,
+    tres_usage_out_min_nodeid: [*]u64,
+    tres_usage_out_min_taskid: [*]u64,
+    tres_usage_out_tot: [*]u64,
 
-    id: JobacctID,
+    id: ID,
     dataset_id: c_int,
 
     last_tres_usage_in_tot: f64, // double
     last_tres_usage_out_tot: f64, // double
     cur_time: time_t,
     last_time: time_t,
+
+    pub const ID = extern struct {
+        taskid: u32,
+        nodeid: u32,
+        step: ?*stepd_step_rec_t = null,
+    };
 };
 
-pub const JobacctID = extern struct {
-    taskid: u32,
-    nodeid: u32,
-    step: ?*stepd_step_rec_t = null,
+pub const StepPIDs = extern struct {
+    node_name: ?CStr,
+    pid: [*c]u32,
+    pid_cnt: u32,
 };
 
-pub const job_step_pids_t = extern struct {
-    node_name: ?CStr = null,
-    pid: [*c]u32 = @import("std").mem.zeroes([*c]u32),
-    pid_cnt: u32 = @import("std").mem.zeroes(u32),
-};
-
-pub const job_step_stat_t = extern struct {
-    jobacct: ?*Jobacctinfo = null,
+pub const StepStatItem = extern struct {
+    jobacct: ?*InternalJobAccounting,
     num_tasks: u32,
     return_code: u32,
-    step_pids: ?*job_step_pids_t = null,
+    step_pids: ?*StepPIDs,
 };
 
-pub const job_step_stat_response_msg_t = extern struct {
-    stats_list: ?*db.List(*job_step_stat_t),
+pub const StepStatResponse = extern struct {
+    stats_list: ?*db.List(*StepStatItem),
     step_id: Step.ID,
 };
 
-pub const lock_level_t = enum(c_uint) {
-    no_lock,
-    read_lock,
-    write_lock,
+pub const TotalJobAccounting = struct {
+    inner: ?*InternalJobAccounting,
+
+    pub const empty: TotalJobAccounting = .{
+        .inner = null,
+    };
+
+    pub fn isEmpty(self: *const TotalJobAccounting) bool {
+        return self.inner == null;
+    }
+
+    pub fn init(self: *TotalJobAccounting, step_jobacct: *InternalJobAccounting) void {
+        if (db.assoc_mgr_tres_list == null and step_jobacct.tres_list != null) {
+            setupAssociationManagerTRES(step_jobacct);
+        }
+        self.inner = c.jobacctinfo_create(null);
+    }
+
+    pub fn aggregate(self: *TotalJobAccounting, step_jobacct: *InternalJobAccounting) void {
+        c.jobacctinfo_aggregate(self.inner.?, step_jobacct);
+    }
+
+    pub fn convertToStep(self: *TotalJobAccounting) db.Step {
+        var db_step: db.Step = std.mem.zeroInit(db.Step, .{});
+        if (self.inner) |inner| {
+            c.jobacctinfo_2_stats(&db_step.stats, inner);
+            db_step.user_cpu_sec = inner.user_cpu_sec;
+            db_step.sys_cpu_sec = inner.sys_cpu_sec;
+            c.jobacctinfo_destroy(inner);
+            inner.* = undefined;
+        }
+        return db_step;
+    }
 };
 
-pub const assoc_mgr_lock_t = extern struct {
-    assoc: lock_level_t = .no_lock,
-    file: lock_level_t = .no_lock,
-    qos: lock_level_t = .no_lock,
-    res: lock_level_t = .no_lock,
-    tres: lock_level_t = .no_lock,
-    user: lock_level_t = .no_lock,
-    wckey: lock_level_t = .no_lock,
-};
-
-pub extern fn assoc_mgr_lock(locks: *assoc_mgr_lock_t) void;
-pub extern fn assoc_mgr_unlock(locks: *assoc_mgr_lock_t) void;
-pub extern fn assoc_mgr_post_tres_list(new_list: *db.List(*db.TrackableResource)) void;
-pub extern fn jobacctinfo_create(jobacct_id: ?*JobacctID) ?*Jobacctinfo;
-pub extern fn jobacctinfo_destroy(object: *void) void;
-pub extern fn jobacctinfo_aggregate(dest: *Jobacctinfo, from: *Jobacctinfo) void;
-pub extern fn jobacctinfo_2_stats(stats: *db.Step.Stats, jobacct: *Jobacctinfo) void;
-pub extern fn slurmdb_ave_tres_usage(tres_string: ?CStr, tasks: u32) ?CStr; // tasks was c_int
-pub extern fn slurm_job_step_stat_response_msg_free(object: ?*anyopaque) void;
-pub extern fn slurmdb_find_tres_count_in_string(tres_str_in: ?CStr, id: slurm.TresType) u64;
-pub extern fn slurmdb_free_slurmdb_stats_members(stats: *db.StepStats) void;
-
-pub extern fn slurm_job_step_stat(
-    step_id: *Step.ID,
-    node_list: ?CStr,
-    use_protocol_ver: u16,
-    resp: *?*job_step_stat_response_msg_t,
-) c_int;
-
-pub fn statStep(allocator: std.mem.Allocator, s: *Step) anyerror!Step.Statistics {
-    var total_jobacct: ?*Jobacctinfo = null;
-    var stat_resp: ?*job_step_stat_response_msg_t = null;
-    var db_step: db.Step = std.mem.zeroInit(db.Step, .{});
-    var db_stats = &db_step.stats;
+pub fn statStep(allocator: std.mem.Allocator, s: *Step) StatError!Step.Statistics {
+    var total_jobacct: TotalJobAccounting = .empty;
+    var stat_resp: ?*StepStatResponse = null;
     var ntasks: u32 = 0;
 
-    const rc = slurm_job_step_stat(
-        &s.step_id,
-        null,
-        s.start_protocol_ver,
-        &stat_resp,
-    );
+    const rc = c.slurm_job_step_stat(&s.step_id, s.nodes, s.start_protocol_ver, &stat_resp);
     try err.checkRpc(rc);
-    defer slurm_job_step_stat_response_msg_free(@ptrCast(stat_resp));
-    //defer c.slurmdb_free_slurmdb_stats_members(&db_stats);
+    const resp = stat_resp orelse return error.Generic;
+    defer c.slurm_job_step_stat_response_msg_free(@ptrCast(stat_resp));
 
-    // TODO: deinit stats members
+    var node_list: std.ArrayList([:0]const u8) = .empty;
+    defer node_list.deinit(allocator);
 
-    var node_list = std.ArrayList([:0]const u8).init(allocator);
-    defer node_list.deinit();
+    const stat_list = resp.stats_list orelse return .{};
+    var stat_iter = stat_list.iter();
+    defer stat_iter.deinit();
 
-    if (stat_resp.?.stats_list) |stat_list| {
-        var stat_iter = stat_list.iter();
-        defer stat_iter.deinit();
+    while (stat_iter.next()) |stat| {
+        if (stat.step_pids == null or stat.step_pids.?.node_name == null) continue;
 
-        while (stat_iter.next()) |stat| {
-            if (stat.step_pids == null or stat.step_pids.?.node_name == null) continue;
+        // TODO: PIDs?
 
-            // TODO: PIDs?
-
-            if (stat.step_pids.?.node_name) |nn| {
-                try node_list.append(std.mem.span(nn));
-            }
-            ntasks += stat.num_tasks;
-
-            if (stat.jobacct) |jobacct| {
-                if (db.assoc_mgr_tres_list == null and jobacct.tres_list != null) {
-                    const locks: assoc_mgr_lock_t = .{ .tres = .write_lock };
-                    assoc_mgr_lock(@constCast(&locks));
-                    assoc_mgr_post_tres_list(jobacct.tres_list.?);
-                    assoc_mgr_unlock(@constCast(&locks));
-
-                    jobacct.tres_list = null;
-                }
-
-                if (total_jobacct == null) {
-                    total_jobacct = jobacctinfo_create(null);
-                }
-
-                jobacctinfo_aggregate(total_jobacct.?, jobacct);
-            }
+        if (stat.step_pids.?.node_name) |nn| {
+            try node_list.append(allocator, std.mem.span(nn));
         }
+        ntasks += stat.num_tasks;
 
-        if (total_jobacct) |tj| {
-            jobacctinfo_2_stats(db_stats, tj);
-            jobacctinfo_destroy(@ptrCast(tj));
-        }
+        const step_jobacct = stat.jobacct orelse continue;
 
-        if (ntasks > 0) {
-            db_stats.act_cpufreq /= @floatFromInt(ntasks);
+        if (total_jobacct.isEmpty()) total_jobacct.init(step_jobacct);
+        total_jobacct.aggregate(step_jobacct);
+    }
 
-            var usage_tmp = db_stats.tres_usage_in_ave;
-            if (usage_tmp) |tmp| {
-                db_stats.tres_usage_in_ave = slurmdb_ave_tres_usage(usage_tmp, ntasks);
-                slurm_allocator.free(std.mem.span(tmp));
-            }
+    var db_step = total_jobacct.convertToStep();
+    var db_stats = &db_step.stats;
+    defer c.slurmdb_free_slurmdb_stats_members(db_stats);
 
-            usage_tmp = db_stats.tres_usage_out_ave;
-            if (usage_tmp) |tmp| {
-                db_stats.tres_usage_out_ave = slurmdb_ave_tres_usage(usage_tmp, ntasks);
-                slurm_allocator.free(std.mem.span(tmp));
-            }
-        }
+    if (ntasks > 0) {
+        db_stats.act_cpufreq /= @floatFromInt(ntasks);
+        setAverageUsage(&db_stats.tres_usage_in_ave, @intCast(ntasks));
+        setAverageUsage(&db_stats.tres_usage_out_ave, @intCast(ntasks));
     }
 
     // TODO: this is just for prototyping, make this more ergonomic
@@ -195,8 +166,24 @@ pub fn statStep(allocator: std.mem.Allocator, s: *Step) anyerror!Step.Statistics
     return parseStats(&db_step, node_list, cpus, run_time, true);
 }
 
+fn setupAssociationManagerTRES(jobacct: *InternalJobAccounting) void {
+    var locks: AssociationManagerLocks = .{ .tres = .write_lock };
+    AssociationManager.lock(&locks);
+    AssociationManager.postTRESList(jobacct.tres_list.?);
+    AssociationManager.unlock(&locks);
+    jobacct.tres_list = null;
+}
+
+fn setAverageUsage(usage: *?CStr, ntasks: c_int) void {
+    const tmp = usage.*;
+    if (tmp) |t| {
+        defer slurm_allocator.free(std.mem.span(t));
+        usage.* = c.slurmdb_ave_tres_usage(t, ntasks);
+    }
+}
+
 pub fn find_tres_count(tres_str_in: ?CStr, id: slurm.TresType) u64 {
-    const out: u64 = slurmdb_find_tres_count_in_string(tres_str_in, id);
+    const out: u64 = c.slurmdb_find_tres_count_in_string(tres_str_in, id);
     return if (out == NoValue.u64 or out == Infinite.u64)
         0
     else
@@ -236,23 +223,18 @@ pub fn parseStats(
     pstats.avg_virtual_memory = find_tres_count(stat.tres_usage_in_ave, .vmem);
 
     pstats.max_disk_read = find_tres_count(stat.tres_usage_in_max, .fs_disk);
-    const max_disk_read_nodeid = find_tres_count(stat.tres_usage_in_max_nodeid, .fs_disk);
     pstats.max_disk_read_task = find_tres_count(stat.tres_usage_in_max_taskid, .fs_disk);
 
     pstats.max_disk_write = find_tres_count(stat.tres_usage_out_max, .fs_disk);
-    const max_disk_write_nodeid = find_tres_count(stat.tres_usage_out_max_nodeid, .fs_disk);
     pstats.max_disk_write_task = find_tres_count(stat.tres_usage_out_max_taskid, .fs_disk);
 
     pstats.max_resident_memory = find_tres_count(stat.tres_usage_in_max, .mem);
-    const max_resident_memory_nodeid = find_tres_count(stat.tres_usage_in_max_nodeid, .mem);
     pstats.max_resident_memory_task = find_tres_count(stat.tres_usage_in_max_taskid, .mem);
 
     pstats.max_virtual_memory = find_tres_count(stat.tres_usage_in_max, .vmem);
-    const max_virtual_memory_nodeid = find_tres_count(stat.tres_usage_in_max_nodeid, .vmem);
     pstats.max_virtual_memory_task = find_tres_count(stat.tres_usage_in_max_taskid, .vmem);
 
     pstats.min_cpu_time = @intCast(find_tres_count(stat.tres_usage_in_min, .cpu) / cpu_time_adj);
-    const min_cpu_time_nodeid = find_tres_count(stat.tres_usage_in_min_nodeid, .cpu);
     pstats.min_cpu_time_task = find_tres_count(stat.tres_usage_in_min_taskid, .cpu);
 
     // The Total CPU-Time extracted here is only used for live-stats.
@@ -275,6 +257,11 @@ pub fn parseStats(
     }
 
     if (nodes.items.len > 0) {
+        const max_disk_read_nodeid = find_tres_count(stat.tres_usage_in_max_nodeid, .fs_disk);
+        const max_disk_write_nodeid = find_tres_count(stat.tres_usage_out_max_nodeid, .fs_disk);
+        const min_cpu_time_nodeid = find_tres_count(stat.tres_usage_in_min_nodeid, .cpu);
+        const max_resident_memory_nodeid = find_tres_count(stat.tres_usage_in_max_nodeid, .mem);
+        const max_virtual_memory_nodeid = find_tres_count(stat.tres_usage_in_max_nodeid, .vmem);
         // TODO: is this really safe without allocating?
         pstats.max_disk_write_node = nodes.items[max_disk_write_nodeid];
         pstats.max_disk_read_node = nodes.items[max_disk_read_nodeid];
