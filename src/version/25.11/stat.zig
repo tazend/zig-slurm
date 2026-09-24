@@ -125,7 +125,7 @@ pub fn statStep(allocator: std.mem.Allocator, s: *Step) StatError!Step.Statistic
     const rc = c.slurm_job_step_stat(&s.step_id, s.nodes, s.start_protocol_ver, &stat_resp);
     try err.checkRpc(rc);
     const resp = stat_resp orelse return error.Generic;
-    defer c.slurm_job_step_stat_response_msg_free(@ptrCast(stat_resp));
+    defer c.slurm_job_step_stat_response_msg_free(stat_resp);
 
     var node_list: std.ArrayList([:0]const u8) = .empty;
     defer node_list.deinit(allocator);
