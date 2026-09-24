@@ -75,15 +75,15 @@ pub extern fn slurm_load_job(resp: *?*slurm.Job.LoadResponse, job_id: u32, show_
 pub extern fn slurm_load_job_user(job_info_msg_pptr: *?*slurm.Job.LoadResponse, user_id: u32, show_flags: slurm.ShowFlags) c_int;
 pub extern fn slurm_load_jobs(update_time: std.posix.time_t, job_info_msg_pptr: *?*slurm.Job.LoadResponse, show_flags: slurm.ShowFlags) c_int;
 pub extern fn slurm_notify_job(job_id: u32, message: ?slurm.CStr) c_int;
-pub extern fn slurm_pid2jobid(job_pid: std.posix.pid_t, job_id_ptr: ?[*]u32) c_int;
+pub extern fn slurm_pid2jobid(job_pid: std.posix.pid_t, job_id_ptr: *u32) c_int;
 pub extern fn slurm_update_job(job_msg: ?*slurm.JobSubmitDescription) c_int;
 pub extern fn slurm_get_job_steps(step_id: ?*slurm.Step.ID, resp: *?*slurm.Step.LoadResponse, show_flags: slurm.ShowFlags) c_int;
 pub extern fn slurm_find_step_ids_by_container_id(show_flags: slurm.ShowFlags, uid: std.posix.uid_t, container_id: ?slurm.CStr, steps: *slurm.List(*slurm.Step)) c_int;
 pub extern fn slurm_free_job_step_info_response_msg(msg: ?*slurm.Step.LoadResponse) void;
 pub extern fn slurm_job_step_pids_response_msg_free(object: ?*anyopaque) void;
-pub extern fn slurm_job_step_stat_response_msg_free(object: ?*anyopaque) void;
+pub extern fn slurm_job_step_stat_response_msg_free(object: ?*slurm.stat.StepStatResponse) void;
 pub extern fn slurm_update_step(step_msg: ?*slurm.Step.Updatable) c_int;
-pub extern fn slurm_destroy_selected_step(object: ?*anyopaque) void;
+pub extern fn slurm_destroy_selected_step(object: ?*slurm.db.Step.Selected) void;
 pub extern fn slurm_load_node(update_time: std.posix.time_t, resp: *?*slurm.Node.LoadResponse, show_flags: slurm.ShowFlags) c_int;
 pub extern fn slurm_load_node2(update_time: std.posix.time_t, resp: *?*slurm.Node.LoadResponse, show_flags: slurm.ShowFlags, cluster: ?*slurm.db.Cluster) c_int;
 pub extern fn slurm_load_node_single(resp: *?*slurm.Node.LoadResponse, node_name: ?slurm.CStr, show_flags: slurm.ShowFlags) c_int;
