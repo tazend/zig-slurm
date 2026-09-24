@@ -12,4 +12,5 @@ test {
     _ = @import("slurmctld.zig");
     _ = @import("license.zig");
     _ = @import("trigger.zig");
+    _ = @import("step.zig");
 }
