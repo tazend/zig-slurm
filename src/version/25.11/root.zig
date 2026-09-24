@@ -19,6 +19,7 @@ pub const partition = @import("partition.zig");
 pub const reservation = @import("reservation.zig");
 pub const license = @import("license.zig");
 pub const trigger = @import("trigger.zig");
+pub const stat = @import("stat.zig");
 pub const db = @import("db.zig");
 
 pub const Job = job.Job;
@@ -39,6 +40,7 @@ pub const Error = err.Error;
 const time_t = std.os.linux.time_t;
 
 pub const api_version = config.slurm_version;
+pub const use_slurmfull = config.use_slurmfull;
 pub const slurm_allocator = SlurmAllocator.slurm_allocator;
 
 pub const init = c.slurm_init;
@@ -501,6 +503,12 @@ pub const TresType = enum(c_int) {
     vmem,
     pages,
     static_count,
+};
+
+pub const LockLevel = enum(c_uint) {
+    no_lock,
+    read_lock,
+    write_lock,
 };
 
 test "CPUBinding" {

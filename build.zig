@@ -127,6 +127,7 @@ pub fn build(b: *std.Build) !void {
 
     // This does not work with an optional. It forgets to bring in std. Bug?
     config.addOption(std.SemanticVersion, "slurm_version", semver);
+    config.addOption(bool, "use_slurmfull", use_slurmfull);
     slurm_mod.addOptions("config", config);
 
     b.installArtifact(slurm_lib);
