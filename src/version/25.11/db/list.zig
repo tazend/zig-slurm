@@ -51,12 +51,12 @@ pub fn List(comptime T: type) type {
                 return slurm_list_next(it);
             }
 
-            // list_peek_next is not available in libslurm.so, only libslurmfull.so
-            ///// Get the next item in the List, but without advancing the
-            ///// Iterator. If there is no next item, null is returned.
-            //pub fn peek(it: *Iterator) ?T {
-            //    return slurm_list_peek_next(it);
-            //}
+            /// Get the next item in the List, but without advancing the
+            /// Iterator. If there is no next item, null is returned.
+            /// Only available when using libslurmfull.
+            pub fn peek(it: *Iterator) ?T {
+                return slurm_list_peek_next(it);
+            }
 
             /// Get an Iterator for the List passed in.
             pub fn init(list: *Self) *Iterator {
