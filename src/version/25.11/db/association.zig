@@ -280,10 +280,8 @@ pub fn loadSharesAll() !*Association.Shares.LoadResponse {
     }
 }
 
-
-pub extern fn slurmdb_associations_get(db_conn: ?*Connection, assoc_cond: *Association.Filter) ?*List(*Association);
 pub fn load(conn: *Connection, filter: Association.Filter) !*List(*Association) {
-    const data = slurmdb_associations_get(conn, @constCast(&filter));
+    const data = c.slurmdb_associations_get(conn, @constCast(&filter));
     if (data) |d| {
         return d;
     } else {
@@ -292,17 +290,15 @@ pub fn load(conn: *Connection, filter: Association.Filter) !*List(*Association) 
     }
 }
 
-pub extern fn slurmdb_associations_add(db_conn: ?*Connection, assoc_list: ?*List(*Association)) c_int;
 pub fn add(conn: *Connection, associations: *List(*Association)) !void {
-    const rc = slurmdb_associations_add(conn, associations);
+    const rc = c.slurmdb_associations_add(conn, associations);
     try checkRpc(rc);
 }
 
-pub extern fn slurmdb_associations_remove(db_conn: ?*Connection, assoc_cond: *Association.Filter) ?*List(CStr);
-pub const removeRaw = slurmdb_associations_remove;
+pub const removeRaw = c.slurmdb_associations_remove;
 
 pub fn remove(conn: *Connection, filter: Association.Filter) !?*List(CStr) {
-    const data = slurmdb_associations_remove(conn, @constCast(&filter));
+    const data = removeRaw(conn, @constCast(&filter));
     try err.getError();
 
     return if (data) |d|

@@ -56,8 +56,11 @@ pub fn add(conn: *Connection, accounts: *List(*Account)) !void {
     try checkRpc(rc);
 }
 
-pub fn remove(conn: *db.Connection, filter: db.Account.Filter) !?*List(CStr) {
-    const data = c.slurmdb_accounts_remove(conn, @constCast(&filter));
+pub const removeRaw = c.slurmdb_accounts_remove;
+
+pub fn remove(conn: *db.Connection, filter: db.Account.Filter) !*List(CStr) {
+    const data = removeRaw(conn, @constCast(&filter));
+    errdefer if (data) |d| d.deinit();
     try err.getError();
 
     return if (data) |d|

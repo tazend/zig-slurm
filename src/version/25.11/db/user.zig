@@ -11,6 +11,7 @@ const JobState = slurm.Job.State;
 const List = db.List;
 const Connection = db.Connection;
 const checkRpc = @import("../error.zig").checkRpc;
+const c = slurm.c;
 
 pub const User = extern struct {
     admin_level: db.AdminLevel = .not_set,
@@ -53,9 +54,8 @@ pub const User = extern struct {
     };
 };
 
-pub extern fn slurmdb_users_get(db_conn: ?*Connection, user_cond: *User.Filter) ?*List(*User);
 pub fn load(conn: *Connection, filter: User.Filter) !*List(*User) {
-    const data = slurmdb_users_get(conn, @constCast(&filter));
+    const data = c.slurmdb_users_get(conn, @constCast(&filter));
     if (data) |d| {
         return d;
     } else {
@@ -64,17 +64,12 @@ pub fn load(conn: *Connection, filter: User.Filter) !*List(*User) {
     }
 }
 
-pub extern fn slurmdb_users_add(db_conn: ?*Connection, user_list: ?*List(*User)) c_int;
 pub fn add(conn: *Connection, users: *List(*User)) !void {
-    const rc = slurmdb_users_add(conn, users);
+    const rc = c.slurmdb_users_add(conn, users);
     try checkRpc(rc);
 }
 
-pub extern fn slurmdb_users_remove(
-    db_conn: ?*Connection,
-    user_cond: *User.Filter,
-) ?*List(CStr);
-pub const removeRaw = slurmdb_users_remove;
+pub const removeRaw = c.slurmdb_users_remove;
 
 pub fn remove(conn: *Connection, filter: User.Filter) !*List(CStr) {
     const data = removeRaw(conn, @constCast(&filter));
